@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RiftboundStore.Data;
 using RiftboundStore.Models;
+using RiftboundStore.Models.ViewModels;
 
 namespace RiftboundStore.Areas.Admin.Controllers;
 
@@ -22,9 +23,30 @@ public class CardsController : Controller
         _env = env;
     }
 
-    public async Task<IActionResult> Index(string? q, int page = 1)
+    public async Task<IActionResult> Index(
+        string? q,
+        string? edition,
+        CardLanguage? language,
+        string? rarity,
+        bool? foil,
+        bool inStockOnly = false,
+        string sort = "edition",
+        int page = 1)
     {
+        var vm = new AdminCardsIndexViewModel
+        {
+            Query = q,
+            Edition = edition,
+            Language = language,
+            Rarity = rarity,
+            Foil = foil,
+            InStockOnly = inStockOnly,
+            Sort = sort ?? "edition",
+            Page = page < 1 ? 1 : page
+        };
+
         IQueryable<Card> query = _db.Cards.AsNoTracking();
+
         if (!string.IsNullOrWhiteSpace(q))
         {
             var like = $"%{q.Trim()}%";
@@ -32,16 +54,61 @@ public class CardsController : Controller
                                      || EF.Functions.Like(c.Number, like)
                                      || EF.Functions.Like(c.Edition, like));
         }
-        query = query.OrderBy(c => c.Edition).ThenBy(c => c.Number);
 
-        const int pageSize = 30;
-        var total = await query.CountAsync();
-        var cards = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        if (!string.IsNullOrWhiteSpace(edition))
+            query = query.Where(c => c.Edition == edition);
 
-        ViewBag.Query = q;
-        ViewBag.Page = page;
-        ViewBag.TotalPages = (int)Math.Ceiling(total / (double)pageSize);
-        return View(cards);
+        if (language.HasValue)
+            query = query.Where(c => c.Language == language.Value);
+
+        if (foil.HasValue)
+            query = query.Where(c => c.IsFoil == foil.Value);
+
+        if (inStockOnly)
+            query = query.Where(c => c.Stock > 0);
+
+        if (!string.IsNullOrWhiteSpace(rarity))
+        {
+            var r = rarity.ToLowerInvariant();
+            if (r == "other")
+            {
+                query = query.Where(c => c.Rarity == null
+                                          || (c.Rarity != DisplayNames.RarityCommon
+                                              && c.Rarity != DisplayNames.RarityUncommon
+                                              && c.Rarity != DisplayNames.RarityRare
+                                              && c.Rarity != DisplayNames.RarityEpic));
+            }
+            else
+            {
+                query = query.Where(c => c.Rarity == r);
+            }
+        }
+
+        query = vm.Sort switch
+        {
+            "name" => query.OrderBy(c => c.Name),
+            "number_asc" => query.OrderBy(c => c.Number.Length).ThenBy(c => c.Number),
+            "number_desc" => query.OrderByDescending(c => c.Number.Length).ThenByDescending(c => c.Number),
+            "stock_desc" => query.OrderByDescending(c => c.Stock).ThenBy(c => c.Name),
+            "stock_asc" => query.OrderBy(c => c.Stock).ThenBy(c => c.Name),
+            "recent" => query.OrderByDescending(c => c.UpdatedAt),
+            _ /* edition */ => query.OrderBy(c => c.Edition).ThenBy(c => c.Number.Length).ThenBy(c => c.Number)
+        };
+
+        vm.TotalCount = await query.CountAsync();
+        vm.Cards = await query
+            .Skip((vm.Page - 1) * vm.PageSize)
+            .Take(vm.PageSize)
+            .ToListAsync();
+
+        vm.Editions = await _db.Cards
+            .AsNoTracking()
+            .Select(c => c.Edition)
+            .Distinct()
+            .OrderBy(e => e)
+            .ToListAsync();
+
+        return View(vm);
     }
 
     [HttpGet]
