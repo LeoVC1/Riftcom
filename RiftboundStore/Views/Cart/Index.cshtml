@@ -1,0 +1,79 @@
+@model IReadOnlyList<RiftboundStore.Models.CartItem>
+@{
+    ViewData["Title"] = "Carrinho";
+}
+
+<h1 class="h4 mb-3">Seu carrinho</h1>
+
+@if (TempData["CartMessage"] is string msg)
+{
+    <div class="alert alert-success">@msg</div>
+}
+@if (TempData["CartError"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">
+        Seu carrinho está vazio. <a asp-controller="Home" asp-action="Index">Ver cartas</a>.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Carta</th>
+                    <th>Edição</th>
+                    <th>Idioma</th>
+                    <th>Foil</th>
+                    <th>Quantidade</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                @if (!string.IsNullOrWhiteSpace(item.Card?.ImageUrl))
+                                {
+                                    <img src="@item.Card.ImageUrl" alt="" style="width:48px;height:48px;object-fit:contain;background:#f8f9fa" />
+                                }
+                                <div>
+                                    <div class="fw-semibold">@item.Card?.Name</div>
+                                    <div class="small text-muted">#@item.Card?.Number</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>@item.Card?.Edition</td>
+                        <td>@(item.Card?.Language == RiftboundStore.Models.CardLanguage.Chinese ? "Chinês" : "Inglês")</td>
+                        <td>@(item.Card?.IsFoil == true ? "Sim" : "Não")</td>
+                        <td>
+                            <form asp-action="Update" method="post" class="d-flex align-items-center gap-2">
+                                <input type="hidden" name="cartItemId" value="@item.Id" />
+                                <input type="number" name="quantity" value="@item.Quantity" min="1" max="@(item.Card?.Stock ?? 1)" class="form-control form-control-sm" style="width:80px" />
+                                <button class="btn btn-sm btn-outline-secondary" type="submit">Atualizar</button>
+                            </form>
+                        </td>
+                        <td class="text-end">
+                            <form asp-action="Remove" method="post">
+                                <input type="hidden" name="cartItemId" value="@item.Id" />
+                                <button class="btn btn-sm btn-outline-danger" type="submit">Remover</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex justify-content-between mt-3">
+        <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">Continuar navegando</a>
+        <a asp-controller="Checkout" asp-action="Index" class="btn btn-primary">Ir para checkout</a>
+    </div>
+}

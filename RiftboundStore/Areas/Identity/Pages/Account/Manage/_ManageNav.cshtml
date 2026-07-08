@@ -1,0 +1,14 @@
+@inject SignInManager<ApplicationUser> SignInManager
+@{
+    var hasExternalLogins = (await SignInManager.GetExternalAuthenticationSchemesAsync()).Any();
+}
+<ul class="nav nav-pills flex-column">
+    <li class="nav-item"><a class="nav-link" id="profile" asp-page="./Index">Perfil</a></li>
+    <li class="nav-item"><a class="nav-link" id="email" asp-page="./Email">E-mail</a></li>
+    <li class="nav-item"><a class="nav-link" id="change-password" asp-page="./ChangePassword">Alterar senha</a></li>
+    @if (hasExternalLogins)
+    {
+        <li class="nav-item"><a class="nav-link" id="external-logins" asp-page="./ExternalLogins">Contas conectadas</a></li>
+    }
+    <li class="nav-item"><a class="nav-link" id="personal-data" asp-page="./PersonalData">Dados pessoais</a></li>
+</ul>

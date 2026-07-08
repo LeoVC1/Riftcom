@@ -1,0 +1,44 @@
+@{
+    ViewData["Title"] = "Importar cartas";
+    var summary = TempData["ImportSummary"] as string;
+    var warnings = TempData["ImportWarnings"] as string;
+}
+
+<h1 class="h4 mb-3">Importar cartas do playriftbound.com</h1>
+
+@if (!string.IsNullOrEmpty(summary))
+{
+    <div class="alert alert-success">
+        <strong>Importação concluída.</strong><br />
+        @summary
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(warnings))
+{
+    <div class="alert alert-warning">
+        <strong>Avisos:</strong>
+        <pre class="mb-0" style="white-space:pre-wrap">@warnings</pre>
+    </div>
+}
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <p>Este importador baixa a galeria oficial em
+            <a href="https://playriftbound.com/en-us/card-gallery/" target="_blank" rel="noopener">playriftbound.com/en-us/card-gallery</a>
+            e adiciona todas as cartas ao banco.
+        </p>
+        <ul>
+            <li>Idioma dos itens importados: <strong>Inglês</strong> (a galeria pública só entrega inglês).</li>
+            <li>Regra de foil: cartas <strong>Rare, Epic e Showcase</strong> entram como <strong>Foil</strong>.</li>
+            <li>Cartas <strong>Common e Uncommon</strong> entram como <strong>não Foil</strong>.</li>
+            <li>Estoque inicial: <strong>0</strong> (você define depois no admin).</li>
+            <li>Re-importar é seguro: atualiza nome/imagem e <strong>preserva o estoque</strong> existente.</li>
+        </ul>
+
+        <form asp-action="Run" method="post" onsubmit="this.querySelector('button').disabled = true;">
+            <button type="submit" class="btn btn-primary">Baixar e importar agora</button>
+            <a asp-controller="Cards" asp-action="Index" class="btn btn-link">Ver cartas</a>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,98 @@
+@model RiftboundStore.Models.Order
+@using RiftboundStore.Models
+@{
+    ViewData["Title"] = $"Pedido #{Model.Id}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0">Pedido #@Model.Id</h1>
+    <span class="badge @DisplayNames.StatusBadgeClass(Model.Status) fs-6">@DisplayNames.ForStatus(Model.Status)</span>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">Itens</div>
+            <div class="card-body p-0">
+                <table class="table mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th>Carta</th>
+                            <th>Edição</th>
+                            <th>Idioma</th>
+                            <th>Foil</th>
+                            <th>Qtd</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">@item.CardName</div>
+                                    <div class="small text-muted">#@item.CardNumber</div>
+                                </td>
+                                <td>@item.CardEdition</td>
+                                <td>@(item.CardLanguage == CardLanguage.Chinese ? "Chinês" : "Inglês")</td>
+                                <td>@(item.CardIsFoil ? "Sim" : "Não")</td>
+                                <td>@item.Quantity</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow-sm mb-3">
+            <div class="card-header fw-semibold">Resumo</div>
+            <div class="card-body">
+                <p class="mb-1"><strong>Data:</strong> @Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+                <p class="mb-1"><strong>Total de cartas:</strong> @Model.Items.Sum(i => i.Quantity)</p>
+                <p class="mb-0"><strong>Doação:</strong> @(Model.DonationAmount > 0 ? $"R$ {Model.DonationAmount:F2}" : "sem doação")</p>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-header fw-semibold">Pagamento (PIX)</div>
+            <div class="card-body">
+                @if (Model.DonationAmount > 0)
+                {
+                    <p class="mb-1">Se ainda não enviou:</p>
+                    <p class="mb-1"><strong>Chave (@ViewBag.PixKeyType):</strong></p>
+                    <code class="d-block user-select-all">@ViewBag.PixKey</code>
+                }
+                else
+                {
+                    <p class="mb-0 text-muted">Sem doação — obrigado por vir!</p>
+                }
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">Entrega</div>
+            <div class="card-body">
+                <p class="mb-1"><strong>Método:</strong> @DisplayNames.ForDelivery(Model.DeliveryMethod)</p>
+                @if (Model.DeliveryMethod == DeliveryMethod.EventPickup)
+                {
+                    <p class="mb-0"><strong>Onde:</strong> @DisplayNames.ForPickup(Model.PickupEvent)</p>
+                }
+                else
+                {
+                    <p class="mb-0">
+                        Entrar em contato conosco, via
+                        <a href="@ViewBag.WhatsAppUrl" target="_blank" rel="noopener">whatsapp</a>, para combinar a entrega.
+                    </p>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.Notes))
+                {
+                    <hr />
+                    <p class="mb-0"><strong>Obs:</strong> @Model.Notes</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<a asp-action="Index" class="btn btn-link mt-3 ps-0">← Voltar aos meus pedidos</a>

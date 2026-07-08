@@ -1,0 +1,17 @@
+**/bin
+**/obj
+**/.vs
+**/.vscode
+**/.idea
+**/app.db
+**/app.db-shm
+**/app.db-wal
+**/.git
+**/.gitignore
+**/.dockerignore
+**/Dockerfile
+**/README*
+**/*.md
+gallery_full.html
+cards_dump.json
+.claude

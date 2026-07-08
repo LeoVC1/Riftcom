@@ -1,0 +1,54 @@
+@model IReadOnlyList<RiftboundStore.Models.Order>
+@using RiftboundStore.Models
+@{
+    ViewData["Title"] = "Meus pedidos";
+}
+
+<h1 class="h4 mb-3">Meus pedidos</h1>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">
+        Você ainda não fez nenhum pedido. <a asp-controller="Home" asp-action="Index">Ver cartas</a>.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle shadow-sm bg-white">
+            <thead>
+                <tr>
+                    <th>Pedido</th>
+                    <th>Data</th>
+                    <th>Itens</th>
+                    <th>Entrega</th>
+                    <th>Doação</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var o in Model)
+            {
+                <tr>
+                    <td class="fw-semibold">#@o.Id</td>
+                    <td>@o.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>@o.Items.Sum(i => i.Quantity)</td>
+                    <td>
+                        @DisplayNames.ForDelivery(o.DeliveryMethod)
+                        @if (o.DeliveryMethod == DeliveryMethod.EventPickup)
+                        {
+                            <div class="small text-muted">@DisplayNames.ForPickup(o.PickupEvent)</div>
+                        }
+                    </td>
+                    <td>@(o.DonationAmount > 0 ? $"R$ {o.DonationAmount:F2}" : "—")</td>
+                    <td><span class="badge @DisplayNames.StatusBadgeClass(o.Status)">@DisplayNames.ForStatus(o.Status)</span></td>
+                    <td class="text-end">
+                        <a asp-action="Details" asp-route-id="@o.Id" class="btn btn-sm btn-outline-primary">Detalhes</a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

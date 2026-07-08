@@ -1,0 +1,279 @@
+@model RiftboundStore.Models.ViewModels.CardIndexViewModel
+@{
+    ViewData["Title"] = "Cartas";
+    var returnUrl = Context.Request.Path + Context.Request.QueryString;
+    // Only show the hero on the plain home (no filters/search/pagination active)
+    var showHero = string.IsNullOrEmpty(Model.Query) && string.IsNullOrEmpty(Model.Edition)
+                   && !Model.Language.HasValue && !Model.Foil.HasValue
+                   && !Model.InStockOnly && Model.Page == 1
+                   && (Model.Sort ?? "name") == "name";
+}
+
+@if (showHero)
+{
+    <section id="hero" class="carousel slide hero-carousel" data-bs-ride="carousel">
+        <div class="carousel-indicators">
+            <button type="button" data-bs-target="#hero" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
+            <button type="button" data-bs-target="#hero" data-bs-slide-to="1" aria-label="Slide 2"></button>
+            <button type="button" data-bs-target="#hero" data-bs-slide-to="2" aria-label="Slide 3"></button>
+        </div>
+        <div class="carousel-inner">
+            <div class="carousel-item active">
+                <div class="hero-slide hero-slide-1">
+                    <div class="hero-content">
+                        <span class="hero-slide-eyebrow">Comunidade Riftbound</span>
+                        <h2>Bem-vindo à Riftcom</h2>
+                        <p>Uma plataforma sem fins lucrativos para compartilhar cartas Riftbound entre jogadores. Sem preço, sem lucro — só comunidade.</p>
+                        <a href="#catalog" class="btn btn-light">
+                            <svg class="icon me-1"><use href="#icon-cards"/></svg>
+                            Ver cartas
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="carousel-item">
+                <div class="hero-slide hero-slide-2">
+                    <div class="hero-content">
+                        <span class="hero-slide-eyebrow">Como funciona</span>
+                        <h2>Escolha, doe se puder, retire no evento</h2>
+                        <p>Sem pagamento no site. Doação voluntária via PIX ajuda a manter a plataforma. Retire suas cartas em eventos da comunidade ou combine entrega via Uber Flash.</p>
+                        <a asp-controller="Home" asp-action="Index" asp-route-inStockOnly="true" class="btn btn-light">
+                            Só com estoque
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="carousel-item">
+                <div class="hero-slide hero-slide-3">
+                    <div class="hero-content">
+                        <span class="hero-slide-eyebrow">Contribua</span>
+                        <h2>Tem cartas paradas? Doe pra plataforma</h2>
+                        <p>A Riftcom existe pra ajudar novos jogadores a montar decks acessíveis. Doações de cartas físicas mantêm o catálogo vivo — fale conosco no WhatsApp.</p>
+                        <a href="#catalog" class="btn btn-light">
+                            <svg class="icon me-1"><use href="#icon-gift"/></svg>
+                            Ver o catálogo
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button class="carousel-control-prev" type="button" data-bs-target="#hero" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Anterior</span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#hero" data-bs-slide="next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Próximo</span>
+        </button>
+    </section>
+}
+
+<div id="catalog" class="row g-4">
+    <aside class="col-lg-3">
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">Filtros</div>
+            <div class="card-body">
+                <form method="get" asp-action="Index">
+                    <input type="hidden" name="q" value="@Model.Query" />
+
+                    <div class="mb-3">
+                        <label class="form-label">Edição</label>
+                        <select name="edition" class="form-select">
+                            <option value="">Todas</option>
+                            @foreach (var ed in Model.Editions)
+                            {
+                                var selected = ed == Model.Edition ? "selected" : null;
+                                <option value="@ed" selected="@selected">@ed</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Idioma</label>
+                        <select name="language" class="form-select">
+                            <option value="">Todos</option>
+                            <option value="English" selected="@(Model.Language == RiftboundStore.Models.CardLanguage.English)">Inglês</option>
+                            <option value="Chinese" selected="@(Model.Language == RiftboundStore.Models.CardLanguage.Chinese)">Chinês</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Foil</label>
+                        <select name="foil" class="form-select">
+                            <option value="">Todos</option>
+                            <option value="true" selected="@(Model.Foil == true)">Somente Foil</option>
+                            <option value="false" selected="@(Model.Foil == false)">Sem Foil</option>
+                        </select>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" name="inStockOnly" value="true"
+                               id="inStockOnly" @(Model.InStockOnly ? "checked" : "") />
+                        <label class="form-check-label" for="inStockOnly">Somente com estoque</label>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Ordenar por</label>
+                        <select name="sort" class="form-select">
+                            <option value="name" selected="@(Model.Sort == "name")">Nome</option>
+                            <option value="number_asc" selected="@(Model.Sort == "number_asc")">Número (0 → 100)</option>
+                            <option value="number_desc" selected="@(Model.Sort == "number_desc")">Número (100 → 0)</option>
+                            <option value="edition" selected="@(Model.Sort == "edition")">Edição</option>
+                            <option value="stock" selected="@(Model.Sort == "stock")">Estoque</option>
+                            <option value="newest" selected="@(Model.Sort == "newest")">Mais recentes</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">Aplicar</button>
+                    <a asp-action="Index" class="btn btn-link w-100 mt-2">Limpar filtros</a>
+                </form>
+            </div>
+        </div>
+    </aside>
+
+    <section class="col-lg-9">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1 class="h4 mb-0">Cartas</h1>
+            <span class="text-muted small">@Model.TotalCount resultado(s)</span>
+        </div>
+
+        @if (!Model.Cards.Any())
+        {
+            <div class="alert alert-info">Nenhuma carta encontrada com esses filtros.</div>
+        }
+        else
+        {
+            <div class="row row-cols-2 row-cols-md-3 row-cols-xl-4 g-3">
+                @foreach (var card in Model.Cards)
+                {
+                    var qty = Model.CartQuantities.TryGetValue(card.Id, out var q) ? q : 0;
+                    var esgotada = card.Stock <= 0;
+                    var langCode = card.Language == RiftboundStore.Models.CardLanguage.Chinese ? "ZH" : "EN";
+                    <div class="col">
+                        <div class="product-card card @(esgotada ? "out-of-stock" : "")">
+                            <a asp-action="Card" asp-route-id="@card.Id" class="product-media d-block text-decoration-none" title="Ver detalhes">
+                                @if (!string.IsNullOrWhiteSpace(card.ImageUrl))
+                                {
+                                    <img src="@card.ImageUrl" alt="@card.Name" loading="lazy" />
+                                }
+                                @if (esgotada)
+                                {
+                                    <span class="badge-soldout">Esgotada</span>
+                                }
+                                @if (card.IsFoil)
+                                {
+                                    <span class="badge-foil">Foil</span>
+                                }
+                                <span class="badge-lang">@langCode</span>
+                            </a>
+                            <div class="product-body">
+                                <div class="product-name" title="@card.Name">@card.Name</div>
+                                <div class="product-meta">#@card.Number · @card.Edition</div>
+
+                                <div class="mt-auto">
+                                    @if (esgotada)
+                                    {
+                                        <div class="text-center small text-danger fw-semibold py-1">Sem estoque</div>
+                                    }
+                                    else
+                                    {
+                                        <div class="qty-controls">
+                                            <form asp-controller="Cart" asp-action="Decrement" method="post">
+                                                <input type="hidden" name="cardId" value="@card.Id" />
+                                                <input type="hidden" name="returnUrl" value="@returnUrl" />
+                                                <button type="submit" title="Remover uma unidade" @(qty <= 0 ? "disabled" : null)>
+                                                    <svg class="icon icon-sm"><use href="#icon-minus"/></svg>
+                                                </button>
+                                            </form>
+                                            <div class="qty-display">
+                                                <span class="qty">@qty</span>
+                                                <span class="stock">de @card.Stock</span>
+                                            </div>
+                                            <form asp-controller="Cart" asp-action="Increment" method="post">
+                                                <input type="hidden" name="cardId" value="@card.Id" />
+                                                <input type="hidden" name="returnUrl" value="@returnUrl" />
+                                                <button type="submit" title="Adicionar uma unidade" @(qty >= card.Stock ? "disabled" : null)>
+                                                    <svg class="icon icon-sm"><use href="#icon-plus"/></svg>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                var current = Model.Page;
+                var total = Model.TotalPages;
+                var window = 1; // pages on each side of current
+
+                Dictionary<string, string?> RouteFor(int p) => new()
+                {
+                    ["q"] = Model.Query,
+                    ["edition"] = Model.Edition,
+                    ["language"] = Model.Language?.ToString(),
+                    ["foil"] = Model.Foil?.ToString().ToLower(),
+                    ["inStockOnly"] = Model.InStockOnly.ToString().ToLower(),
+                    ["sort"] = Model.Sort,
+                    ["page"] = p.ToString()
+                };
+
+                // Build the compact page list: [1] ... [current-1] [current] [current+1] ... [last]
+                var pages = new List<int?>();
+                pages.Add(1);
+                if (current - window > 2) pages.Add(null); // ellipsis
+                for (int p = Math.Max(2, current - window); p <= Math.Min(total - 1, current + window); p++)
+                    pages.Add(p);
+                if (current + window < total - 1) pages.Add(null); // ellipsis
+                if (total > 1) pages.Add(total);
+
+                <nav class="mt-4" aria-label="Paginação">
+                    <ul class="pagination pagination-compact justify-content-center">
+                        <li class="page-item @(current == 1 ? "disabled" : "")">
+                            <a class="page-link" asp-action="Index" asp-all-route-data="@RouteFor(Math.Max(1, current - 1))" aria-label="Anterior">
+                                <svg class="icon icon-sm" style="transform:scaleX(-1)"><use href="#icon-chevron-right"/></svg>
+                                <span class="d-none d-sm-inline ms-1">Anterior</span>
+                            </a>
+                        </li>
+
+                        @foreach (var p in pages)
+                        {
+                            if (p is null)
+                            {
+                                <li class="page-item disabled d-none d-sm-flex" aria-hidden="true">
+                                    <span class="page-link">…</span>
+                                </li>
+                            }
+                            else if (p == current)
+                            {
+                                <li class="page-item active" aria-current="page">
+                                    <span class="page-link">@p</span>
+                                </li>
+                            }
+                            else
+                            {
+                                <li class="page-item d-none d-sm-flex">
+                                    <a class="page-link" asp-action="Index" asp-all-route-data="@RouteFor(p.Value)">@p</a>
+                                </li>
+                            }
+                        }
+
+                        <li class="page-item @(current == total ? "disabled" : "")">
+                            <a class="page-link" asp-action="Index" asp-all-route-data="@RouteFor(Math.Min(total, current + 1))" aria-label="Próxima">
+                                <span class="d-none d-sm-inline me-1">Próxima</span>
+                                <svg class="icon icon-sm"><use href="#icon-chevron-right"/></svg>
+                            </a>
+                        </li>
+                    </ul>
+                    <div class="text-center text-muted small mt-2">
+                        Página @current de @total
+                    </div>
+                </nav>
+            }
+        }
+    </section>
+</div>

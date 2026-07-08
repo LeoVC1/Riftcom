@@ -1,0 +1,142 @@
+@model IReadOnlyList<RiftboundStore.Models.Order>
+@using RiftboundStore.Models
+@{
+    ViewData["Title"] = "Pedidos";
+    var filter = ViewBag.StatusFilter as OrderStatus?;
+}
+
+<h1 class="h4 mb-3">Pedidos</h1>
+
+<div class="mb-3 d-flex gap-2 flex-wrap">
+    <a asp-action="Index" class="btn btn-sm @(!filter.HasValue ? "btn-primary" : "btn-outline-primary")">Todos</a>
+    @foreach (var s in Enum.GetValues<OrderStatus>())
+    {
+        var active = filter == s ? "btn-primary" : "btn-outline-primary";
+        <a asp-action="Index" asp-route-status="@s" class="btn btn-sm @active">@DisplayNames.ForStatus(s)</a>
+    }
+</div>
+
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Data</th>
+                <th>Usuário</th>
+                <th>Itens</th>
+                <th>Doação</th>
+                <th>Entrega</th>
+                <th style="min-width:280px">Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var o in Model)
+        {
+            <tr data-order-id="@o.Id">
+                <td>#@o.Id</td>
+                <td>@o.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                <td>@o.User?.Email</td>
+                <td>@o.Items.Sum(i => i.Quantity)</td>
+                <td>R$ @o.DonationAmount.ToString("F2")</td>
+                <td>
+                    @if (o.DeliveryMethod == DeliveryMethod.EventPickup)
+                    {
+                        @: Retirada
+                    }
+                    else
+                    {
+                        @: Uber Flash
+                    }
+                </td>
+                <td>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="badge status-badge @DisplayNames.StatusBadgeClass(o.Status)"
+                              data-order-badge="@o.Id">@DisplayNames.ForStatus(o.Status)</span>
+
+                        <form asp-action="UpdateStatus" method="post" class="status-action m-0">
+                            <input type="hidden" name="id" value="@o.Id" />
+                            <input type="hidden" name="status" value="@((int)OrderStatus.Confirmed)" />
+                            <input type="hidden" name="returnTo" value="index" />
+                            <button type="submit"
+                                    class="btn btn-sm btn-outline-info status-btn"
+                                    data-target-status="@((int)OrderStatus.Confirmed)"
+                                    @(o.Status == OrderStatus.Confirmed ? "disabled" : null)
+                                    title="Marcar como Separado">Separado</button>
+                        </form>
+
+                        <form asp-action="UpdateStatus" method="post" class="status-action m-0">
+                            <input type="hidden" name="id" value="@o.Id" />
+                            <input type="hidden" name="status" value="@((int)OrderStatus.Delivered)" />
+                            <input type="hidden" name="returnTo" value="index" />
+                            <button type="submit"
+                                    class="btn btn-sm btn-outline-success status-btn"
+                                    data-target-status="@((int)OrderStatus.Delivered)"
+                                    @(o.Status == OrderStatus.Delivered ? "disabled" : null)
+                                    title="Marcar como Finalizado">Finalizado</button>
+                        </form>
+                    </div>
+                </td>
+                <td class="text-end">
+                    <a asp-action="Details" asp-route-id="@o.Id" class="btn btn-sm btn-outline-primary">Detalhes</a>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const STATUS_BADGE_CLASSES = ['text-bg-warning', 'text-bg-info', 'text-bg-success', 'text-bg-secondary', 'text-bg-light'];
+
+            document.querySelectorAll('form.status-action').forEach(form => {
+                form.addEventListener('submit', async ev => {
+                    ev.preventDefault();
+                    const btn = form.querySelector('button');
+                    const orderRow = form.closest('tr');
+                    const orderId = orderRow?.dataset.orderId;
+                    const targetStatus = btn?.dataset.targetStatus;
+
+                    // Disable both action buttons on this row during the request
+                    const rowButtons = orderRow.querySelectorAll('button.status-btn');
+                    rowButtons.forEach(b => b.disabled = true);
+
+                    try {
+                        const fd = new FormData(form);
+                        const res = await fetch(form.action, {
+                            method: 'POST',
+                            headers: { 'Accept': 'application/json' },
+                            body: fd
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                            showToast(data.error || 'Erro ao atualizar status.', 'error');
+                            rowButtons.forEach(b => b.disabled = false);
+                            return;
+                        }
+
+                        // Update the badge in place
+                        const badge = orderRow.querySelector('.status-badge');
+                        if (badge) {
+                            STATUS_BADGE_CLASSES.forEach(c => badge.classList.remove(c));
+                            if (data.statusBadgeClass) badge.classList.add(data.statusBadgeClass);
+                            badge.textContent = data.statusLabel;
+                        }
+
+                        // Re-enable buttons but disable the one that matches the new status
+                        rowButtons.forEach(b => {
+                            b.disabled = Number(b.dataset.targetStatus) === Number(data.status);
+                        });
+
+                        showToast(data.message || 'Atualizado.', 'success');
+                    } catch (err) {
+                        showToast('Falha: ' + err.message, 'error');
+                        rowButtons.forEach(b => b.disabled = false);
+                    }
+                });
+            });
+        })();
+    </script>
+}

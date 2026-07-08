@@ -1,0 +1,205 @@
+@model IReadOnlyList<RiftboundStore.Models.Card>
+@{
+    ViewData["Title"] = "Cartas";
+    var q = ViewBag.Query as string;
+    var page = (int)(ViewBag.Page ?? 1);
+    var totalPages = (int)(ViewBag.TotalPages ?? 1);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0">Cartas</h1>
+    <a asp-action="Create" class="btn btn-primary">+ Nova carta</a>
+</div>
+
+<form method="get" class="mb-3 d-flex gap-2">
+    <input type="text" name="q" value="@q" class="form-control" placeholder="Buscar por nome, número ou edição" />
+    <button class="btn btn-outline-secondary" type="submit">Buscar</button>
+</form>
+
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th></th>
+                <th>Nome</th>
+                <th>Nº</th>
+                <th>Edição</th>
+                <th>Idioma</th>
+                <th>Foil</th>
+                <th>Estoque</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var c in Model)
+        {
+            <tr>
+                <td>
+                    @if (!string.IsNullOrWhiteSpace(c.ImageUrl))
+                    {
+                        <img src="@c.ImageUrl" style="width:40px;height:40px;object-fit:contain;background:#f8f9fa" alt="" />
+                    }
+                </td>
+                <td>@c.Name</td>
+                <td>@c.Number</td>
+                <td>@c.Edition</td>
+                <td>@(c.Language == RiftboundStore.Models.CardLanguage.Chinese ? "Chinês" : "Inglês")</td>
+                <td>
+                    <form asp-action="UpdateFoil" method="post" class="foil-editor d-inline-block">
+                        <input type="hidden" name="id" value="@c.Id" />
+                        <input type="hidden" name="q" value="@q" />
+                        <input type="hidden" name="page" value="@(page)" />
+                        <div class="form-check form-switch m-0">
+                            <input class="form-check-input foil-toggle" type="checkbox"
+                                   role="switch" name="isFoil" value="true"
+                                   id="foil-@c.Id"
+                                   @(c.IsFoil ? "checked" : "")
+                                   aria-label="Foil de @c.Name" />
+                            <label class="form-check-label small" for="foil-@c.Id">
+                                @(c.IsFoil ? "Sim" : "Não")
+                            </label>
+                        </div>
+                    </form>
+                </td>
+                <td>
+                    <form asp-action="UpdateStock" method="post" class="stock-editor d-inline-flex align-items-center">
+                        <input type="hidden" name="id" value="@c.Id" />
+                        <input type="hidden" name="q" value="@q" />
+                        <input type="hidden" name="page" value="@(page)" />
+                        <button type="submit" name="delta" value="-1"
+                                class="btn btn-sm btn-outline-secondary stock-btn"
+                                title="Diminuir 1"
+                                @(c.Stock <= 0 ? "disabled" : null)>−</button>
+                        <input type="number" name="newStock" value="@c.Stock" min="0" max="10000"
+                               class="form-control form-control-sm stock-input text-center"
+                               aria-label="Estoque de @c.Name" />
+                        <button type="submit" name="delta" value="1"
+                                class="btn btn-sm btn-outline-secondary stock-btn"
+                                title="Aumentar 1">+</button>
+                    </form>
+                </td>
+                <td class="text-end">
+                    <a asp-action="Edit" asp-route-id="@c.Id" class="btn btn-sm btn-outline-primary">Editar</a>
+                    <form asp-action="Delete" asp-route-id="@c.Id" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remover essa carta?')">Remover</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+@if (totalPages > 1)
+{
+    <nav>
+        <ul class="pagination">
+            @for (var p = 1; p <= totalPages; p++)
+            {
+                <li class="page-item @(p == page ? "active" : null)">
+                    <a class="page-link" asp-action="Index" asp-route-q="@q" asp-route-page="@p">@p</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}
+
+@section Scripts {
+    <script>
+        (function () {
+            // -------- Foil toggle --------
+            document.querySelectorAll('form.foil-editor').forEach(form => {
+                const toggle = form.querySelector('.foil-toggle');
+                const label = form.querySelector('label.form-check-label');
+                if (!toggle) return;
+
+                toggle.addEventListener('change', async () => {
+                    // Ensure the value sent matches the current checkbox state (checkbox only
+                    // submits when checked, so we build FormData manually).
+                    const fd = new FormData();
+                    for (const inp of form.querySelectorAll('input[type="hidden"]')) {
+                        fd.append(inp.name, inp.value);
+                    }
+                    fd.append('isFoil', toggle.checked ? 'true' : 'false');
+
+                    toggle.disabled = true;
+                    try {
+                        const res = await fetch(form.action, {
+                            method: 'POST',
+                            headers: { 'Accept': 'application/json' },
+                            body: fd
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                            // Revert the toggle
+                            toggle.checked = !toggle.checked;
+                            showToast(data.error || 'Erro ao atualizar Foil.', 'error');
+                        } else {
+                            // Server-authoritative
+                            toggle.checked = data.isFoil;
+                            if (label) label.textContent = data.isFoil ? 'Sim' : 'Não';
+                            showToast(data.message || 'Atualizado.', 'success');
+                        }
+                    } catch (err) {
+                        toggle.checked = !toggle.checked;
+                        showToast('Falha: ' + err.message, 'error');
+                    } finally {
+                        toggle.disabled = false;
+                    }
+                });
+            });
+
+            // -------- Stock editor --------
+            document.querySelectorAll('form.stock-editor').forEach(form => {
+                // Track which button was clicked so we can include the right `delta`.
+                let clickedDelta = null;
+                form.querySelectorAll('button[name="delta"]').forEach(btn => {
+                    btn.addEventListener('click', () => { clickedDelta = btn.value; });
+                });
+
+                form.addEventListener('submit', async ev => {
+                    ev.preventDefault();
+                    const fd = new FormData(form);
+                    // FormData never includes a submit button's name/value unless it was the submitter,
+                    // which we already handle. But `newStock` is always there. If a +/- was clicked,
+                    // ensure `delta` is set; otherwise remove it so the server treats it as a setStock.
+                    if (clickedDelta !== null) fd.set('delta', clickedDelta);
+                    else fd.delete('delta');
+
+                    // Disable inputs briefly to prevent double-submit
+                    const inputs = form.querySelectorAll('input, button');
+                    inputs.forEach(i => i.disabled = true);
+
+                    try {
+                        const res = await fetch(form.action, {
+                            method: 'POST',
+                            headers: { 'Accept': 'application/json' },
+                            body: fd
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                            showToast(data.error || 'Erro ao atualizar estoque.', 'error');
+                        } else {
+                            // Update input value with server-authoritative stock
+                            const input = form.querySelector('input[name="newStock"]');
+                            if (input) input.value = data.stock;
+                            // Enable/disable the − button based on new stock
+                            const minusBtn = form.querySelector('button[name="delta"][value="-1"]');
+                            if (minusBtn) minusBtn.disabled = data.stock <= 0;
+                            showToast(data.message || 'Atualizado.', 'success');
+                        }
+                    } catch (err) {
+                        showToast('Falha: ' + err.message, 'error');
+                    } finally {
+                        inputs.forEach(i => i.disabled = false);
+                        // Reset minus button state correctly after re-enable
+                        const input = form.querySelector('input[name="newStock"]');
+                        const minusBtn = form.querySelector('button[name="delta"][value="-1"]');
+                        if (input && minusBtn) minusBtn.disabled = Number(input.value) <= 0;
+                        clickedDelta = null;
+                    }
+                });
+            });
+        })();
+    </script>
+}

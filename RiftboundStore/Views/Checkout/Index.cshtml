@@ -1,0 +1,153 @@
+@model RiftboundStore.Models.ViewModels.CheckoutViewModel
+@{
+    ViewData["Title"] = "Checkout";
+}
+
+<h1 class="h4 mb-4">Finalizar pedido</h1>
+
+<div asp-validation-summary="ModelOnly" class="alert alert-danger" style="@(ViewData.ModelState.ErrorCount > 0 ? "" : "display:none")"></div>
+
+<form asp-action="Confirm" method="post" class="row g-4">
+    <div class="col-lg-7">
+        <div class="card mb-3 shadow-sm">
+            <div class="card-header fw-semibold">Itens do pedido</div>
+            <div class="card-body p-0">
+                <table class="table mb-0 align-middle">
+                    <tbody>
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">@item.Card?.Name</div>
+                                    <div class="small text-muted">
+                                        #@item.Card?.Number · @item.Card?.Edition · @(item.Card?.Language == RiftboundStore.Models.CardLanguage.Chinese ? "Chinês" : "Inglês")
+                                        @(item.Card?.IsFoil == true ? " · Foil" : null)
+                                    </div>
+                                </td>
+                                <td class="text-end">Qtd: @item.Quantity</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card mb-3 shadow-sm">
+            <div class="card-header fw-semibold">Ajudar a manutenção da plataforma</div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Contribuição opcional. Como as cartas não têm preço, esse valor ajuda a manter a plataforma no ar.
+                </p>
+                <div class="row row-cols-2 row-cols-md-3 g-2 mb-3">
+                    @foreach (var preset in new[] { ("none","Nenhum"), ("2","R$ 2"), ("5","R$ 5"), ("10","R$ 10"), ("20","R$ 20"), ("other","Outro valor") })
+                    {
+                        var checkedAttr = Model.DonationPreset == preset.Item1 ? "checked" : null;
+                        <div class="col">
+                            <input type="radio" class="btn-check" name="DonationPreset" id="donation-@preset.Item1" value="@preset.Item1" checked="@checkedAttr" />
+                            <label class="btn btn-outline-primary w-100" for="donation-@preset.Item1">@preset.Item2</label>
+                        </div>
+                    }
+                </div>
+                <div id="donation-custom-wrap" class="mb-2" style="@(Model.DonationPreset == "other" ? "" : "display:none")">
+                    <label asp-for="DonationCustom" class="form-label">Outro valor (R$)</label>
+                    <input asp-for="DonationCustom" class="form-control" step="0.01" min="0" />
+                    <span asp-validation-for="DonationCustom" class="text-danger small"></span>
+                </div>
+
+                <div class="alert alert-info mb-0">
+                    <strong>Pagamento apenas por PIX.</strong><br />
+                    Chave PIX (@Model.PixKeyType): <code>@Model.PixKey</code>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3 shadow-sm">
+            <div class="card-header fw-semibold">Entrega</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" asp-for="DeliveryMethod" value="EventPickup" id="dm-pickup" />
+                        <label class="form-check-label" for="dm-pickup">Retirar em algum evento</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" asp-for="DeliveryMethod" value="UberFlash" id="dm-uber" />
+                        <label class="form-check-label" for="dm-uber">Entrega Uber Flash (à combinar)</label>
+                    </div>
+                </div>
+
+                <div id="pickup-events" style="@(Model.DeliveryMethod == RiftboundStore.Models.DeliveryMethod.EventPickup ? "" : "display:none")">
+                    <label class="form-label">Escolha o evento</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" asp-for="PickupEvent" value="MondayCardsHall" id="pe-mon" />
+                        <label class="form-check-label" for="pe-mon">Segunda-feira 19h (CardsHall)</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" asp-for="PickupEvent" value="ThursdayTabletop" id="pe-thu" />
+                        <label class="form-check-label" for="pe-thu">Quinta-feira 19h30 (Tabletop)</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" asp-for="PickupEvent" value="SaturdayTabletop" id="pe-sat" />
+                        <label class="form-check-label" for="pe-sat">Sábado 14h30 (Tabletop)</label>
+                    </div>
+                    <span asp-validation-for="PickupEvent" class="text-danger small"></span>
+                </div>
+
+                <div id="uber-info" class="alert alert-warning mt-2" style="@(Model.DeliveryMethod == RiftboundStore.Models.DeliveryMethod.UberFlash ? "" : "display:none")">
+                    Entrar em contato conosco, via
+                    <a href="@Model.WhatsAppUrl" target="_blank" rel="noopener">whatsapp</a>, para combinar a entrega.
+                </div>
+
+                <div class="mt-3">
+                    <label asp-for="Notes" class="form-label">Observações (opcional)</label>
+                    <textarea asp-for="Notes" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card shadow-sm sticky-top" style="top:1rem">
+            <div class="card-header fw-semibold">Resumo</div>
+            <div class="card-body">
+                <p class="mb-1"><strong>Total de itens:</strong> @Model.TotalQuantity</p>
+                <p class="mb-1"><strong>Doação:</strong> a definir acima</p>
+                <hr />
+                <button type="submit" class="btn btn-primary w-100">Confirmar pedido</button>
+                <a asp-controller="Cart" asp-action="Index" class="btn btn-link w-100">Voltar ao carrinho</a>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        (function () {
+            const custom = document.getElementById('donation-custom-wrap');
+            document.querySelectorAll('input[name="DonationPreset"]').forEach(r => {
+                r.addEventListener('change', () => {
+                    custom.style.display = r.checked && r.value === 'other' ? '' : (custom.style.display);
+                    if (document.querySelector('input[name="DonationPreset"]:checked')?.value !== 'other') {
+                        custom.style.display = 'none';
+                    } else {
+                        custom.style.display = '';
+                    }
+                });
+            });
+
+            const pickup = document.getElementById('pickup-events');
+            const uber = document.getElementById('uber-info');
+            document.querySelectorAll('input[name="DeliveryMethod"]').forEach(r => {
+                r.addEventListener('change', () => {
+                    if (r.value === 'EventPickup' && r.checked) {
+                        pickup.style.display = '';
+                        uber.style.display = 'none';
+                    } else if (r.value === 'UberFlash' && r.checked) {
+                        pickup.style.display = 'none';
+                        uber.style.display = '';
+                    }
+                });
+            });
+        })();
+    </script>
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,82 @@
+@inject Microsoft.AspNetCore.Identity.SignInManager<RiftboundStore.Models.ApplicationUser> SignInManager
+@inject Microsoft.AspNetCore.Identity.UserManager<RiftboundStore.Models.ApplicationUser> UserManager
+@inject RiftboundStore.Services.ICartService CartService
+@{
+    var cartCount = 0;
+    if (SignInManager.IsSignedIn(User))
+    {
+        var uid = UserManager.GetUserId(User);
+        if (!string.IsNullOrEmpty(uid))
+        {
+            cartCount = await CartService.GetTotalCountAsync(uid);
+        }
+    }
+    var currentQ = Context.Request.Query["q"].ToString();
+}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Riftcom</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="d-flex flex-column min-vh-100">
+    <partial name="_Icons" />
+
+    <header>
+        <nav class="site-navbar">
+            <div class="container-fluid gap-2 d-flex align-items-center">
+                <a class="site-brand" asp-area="" asp-controller="Home" asp-action="Index">
+                    <partial name="_Logo" />
+                    <span>Riftcom</span>
+                </a>
+
+                <form class="site-search d-flex flex-grow-1 mx-lg-4" asp-area="" asp-controller="Home" asp-action="Index" method="get" role="search">
+                    <div class="position-relative flex-grow-1">
+                        <svg class="icon icon-input"><use href="#icon-search"/></svg>
+                        <input class="form-control" type="search" name="q" value="@currentQ" placeholder="Buscar carta pelo nome..." aria-label="Buscar" />
+                    </div>
+                </form>
+
+                <div class="d-flex align-items-center gap-1 ms-auto">
+                    <a class="header-action header-cart" asp-controller="Cart" asp-action="Index" title="Carrinho">
+                        <svg class="icon"><use href="#icon-cart"/></svg>
+                        <span class="d-none d-md-inline">Carrinho</span>
+                        @if (cartCount > 0)
+                        {
+                            <span class="cart-badge">@cartCount</span>
+                        }
+                    </a>
+                    <partial name="_LoginPartial" />
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <section aria-label="Aviso da plataforma" class="notice-strip">
+        <div class="container py-2 text-center">
+            Riftcom foi desenvolvido visando o compartilhamento de cartas baratas entre os jogadores. Não possui vínculo com nenhum loja. Se você quiser doar cartas para a plataforma,
+            <a asp-controller="Home" asp-action="Contact" class="fw-semibold">entre em contato conosco</a>.
+        </div>
+    </section>
+
+    <main role="main" class="container py-4 flex-grow-1">
+        @RenderBody()
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div>Plataforma desenvolvida por Leo Campos em parceria com a comunidade. Não possui fins lucrativos. Destinada a novos jogadores. 2026.</div>
+            <div class="mt-2">
+                <a asp-controller="Home" asp-action="Contact" class="text-brand text-decoration-none fw-semibold">Contato</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

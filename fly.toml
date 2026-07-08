@@ -1,0 +1,31 @@
+# Fly.io app config for Riftcom.
+# You'll customize `app` to a globally-unique name during `fly launch` if this one is taken.
+
+app = "riftcom"
+primary_region = "gru"   # São Paulo — lowest latency for BR users
+
+[build]
+
+[env]
+  ASPNETCORE_URLS = "http://+:8080"
+  ASPNETCORE_ENVIRONMENT = "Production"
+
+# Persistent SQLite volume mounted inside the container at /data.
+# The Dockerfile's connection string points here by default.
+[[mounts]]
+  source = "riftcom_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Save cost: the VM sleeps when idle and wakes on the next request (~1s cold start).
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  cpus = 1

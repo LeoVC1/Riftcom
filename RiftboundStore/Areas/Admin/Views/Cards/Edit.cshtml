@@ -1,0 +1,68 @@
+@model RiftboundStore.Models.Card
+@{
+    ViewData["Title"] = $"Editar #{Model.Id}";
+}
+
+<h1 class="h4 mb-3">Editar carta</h1>
+
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="row g-3">
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger" style="@(ViewData.ModelState.ErrorCount > 0 ? "" : "display:none")"></div>
+    <input type="hidden" asp-for="Id" />
+
+    <div class="col-md-8">
+        <label asp-for="Name" class="form-label">Nome</label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger small"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="Number" class="form-label">Número</label>
+        <input asp-for="Number" class="form-control" />
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="Edition" class="form-label">Edição</label>
+        <input asp-for="Edition" class="form-control" />
+    </div>
+    <div class="col-md-3">
+        <label asp-for="Language" class="form-label">Idioma</label>
+        <select asp-for="Language" class="form-select">
+            <option value="English">Inglês</option>
+            <option value="Chinese">Chinês</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label asp-for="Stock" class="form-label">Estoque</label>
+        <input asp-for="Stock" type="number" min="0" class="form-control" />
+    </div>
+
+    <div class="col-md-3 d-flex align-items-end">
+        <div class="form-check">
+            <input asp-for="IsFoil" class="form-check-input" />
+            <label asp-for="IsFoil" class="form-check-label">Foil</label>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <label class="form-label">Trocar imagem (upload)</label>
+        <input type="file" name="image" class="form-control" accept="image/*" />
+    </div>
+    <div class="col-md-6">
+        <label asp-for="ImageUrl" class="form-label">URL da imagem</label>
+        <input asp-for="ImageUrl" class="form-control" />
+    </div>
+    @if (!string.IsNullOrWhiteSpace(Model.ImageUrl))
+    {
+        <div class="col-12">
+            <img src="@Model.ImageUrl" style="max-height:180px" alt="" class="rounded border" />
+        </div>
+    }
+
+    <div class="col-12">
+        <button type="submit" class="btn btn-primary">Salvar</button>
+        <a asp-action="Index" class="btn btn-link">Cancelar</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

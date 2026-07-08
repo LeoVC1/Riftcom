@@ -1,0 +1,77 @@
+@{
+    ViewData["Title"] = "Contato";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="text-center mb-4">
+            <h1 class="h3 mb-2">Fale com a Riftcom</h1>
+            <p class="text-muted">
+                A plataforma é mantida pela comunidade. Se você tem dúvidas, quer combinar uma retirada,
+                ou tem cartas para doar, entre em contato pelos canais abaixo.
+            </p>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body text-center py-4">
+                        <div class="mb-3">
+                            <svg class="icon icon-lg text-brand" style="width:40px;height:40px"><use href="#icon-user"/></svg>
+                        </div>
+                        <div class="text-muted small text-uppercase" style="letter-spacing:.06em">WhatsApp</div>
+                        <div class="h5 mt-1">@ViewBag.WhatsAppPhone</div>
+                        <a href="@ViewBag.WhatsAppUrl" target="_blank" rel="noopener" class="btn btn-primary mt-2">
+                            Abrir conversa
+                        </a>
+                        <div class="small text-muted mt-3">Melhor canal para combinar entrega ou doação de cartas.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body text-center py-4">
+                        <div class="mb-3">
+                            <svg class="icon icon-lg text-brand" style="width:40px;height:40px"><use href="#icon-package"/></svg>
+                        </div>
+                        <div class="text-muted small text-uppercase" style="letter-spacing:.06em">E-mail</div>
+                        <div class="h5 mt-1"><a href="mailto:@ViewBag.ContactEmail" class="text-decoration-none">@ViewBag.ContactEmail</a></div>
+                        <a href="mailto:@ViewBag.ContactEmail" class="btn btn-outline-primary mt-2">
+                            Enviar e-mail
+                        </a>
+                        <div class="small text-muted mt-3">Para assuntos que não são urgentes.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mt-4">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Chave PIX (doação para manutenção)</h2>
+                <p class="text-muted small mb-2">
+                    A Riftcom não cobra pelas cartas. Se quiser ajudar a manter a plataforma no ar,
+                    contribua com o valor que fizer sentido pra você via PIX.
+                </p>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="badge text-bg-secondary">@ViewBag.PixKeyType</span>
+                    <code class="user-select-all fs-6">@ViewBag.PixKey</code>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mt-4">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Locais de retirada</h2>
+                <ul class="mb-0">
+                    <li>Segunda-feira, <strong>19h</strong> — CardsHall</li>
+                    <li>Quinta-feira, <strong>19h30</strong> — Tabletop</li>
+                    <li>Sábado, <strong>14h30</strong> — Tabletop</li>
+                </ul>
+                <p class="small text-muted mt-3 mb-0">
+                    Ou combine entrega via Uber Flash (à combinar) direto no WhatsApp.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

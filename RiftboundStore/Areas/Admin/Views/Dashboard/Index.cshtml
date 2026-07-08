@@ -1,0 +1,60 @@
+@{
+    ViewData["Title"] = "Painel";
+}
+
+<h1 class="h4 mb-4">Painel do Administrador</h1>
+
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Cartas cadastradas</div>
+                <div class="display-6">@ViewBag.CardsCount</div>
+                <a asp-controller="Cards" asp-action="Index" class="btn btn-outline-primary btn-sm mt-2">Gerenciar cartas</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Pedidos totais</div>
+                <div class="display-6">@ViewBag.OrdersCount</div>
+                <a asp-controller="Orders" asp-action="Index" class="btn btn-outline-primary btn-sm mt-2">Ver pedidos</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Pedidos pendentes</div>
+                <div class="display-6 text-warning">@ViewBag.PendingOrders</div>
+                <a asp-controller="Orders" asp-action="Index" asp-route-status="Pending" class="btn btn-outline-warning btn-sm mt-2">Ver pendentes</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4 g-3">
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h2 class="h6">Importar catálogo</h2>
+                <p class="text-muted small mb-2">
+                    Popula o banco com todas as cartas da galeria oficial. Rare/Epic/Showcase entram como Foil.
+                </p>
+                <a asp-controller="Import" asp-action="Index" class="btn btn-outline-primary btn-sm">Ir para importador</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h2 class="h6">Scanner por webcam</h2>
+                <p class="text-muted small mb-2">
+                    Mostre a carta física para a webcam — reconhecemos pelo código no rodapé e você aprova o lote antes de aplicar ao estoque.
+                </p>
+                <a asp-controller="Scanner" asp-action="Index" class="btn btn-outline-primary btn-sm">Abrir scanner</a>
+            </div>
+        </div>
+    </div>
+</div>

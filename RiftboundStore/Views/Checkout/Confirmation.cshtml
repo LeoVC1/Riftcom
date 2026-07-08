@@ -1,0 +1,91 @@
+@model RiftboundStore.Models.Order
+@{
+    ViewData["Title"] = $"Pedido #{Model.Id} confirmado";
+}
+
+<div class="alert alert-success">
+    <h1 class="h4 mb-1">Pedido #@Model.Id realizado!</h1>
+    <p class="mb-0">Enviamos os detalhes abaixo. Você pode acompanhar em "Meus pedidos".</p>
+</div>
+
+<div class="card mb-3 shadow-sm">
+    <div class="card-header fw-semibold">Itens</div>
+    <div class="card-body p-0">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>Carta</th>
+                    <th>Edição</th>
+                    <th>Idioma</th>
+                    <th>Foil</th>
+                    <th>Qtd</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Items)
+                {
+                    <tr>
+                        <td>@item.CardName <span class="text-muted small">#@item.CardNumber</span></td>
+                        <td>@item.CardEdition</td>
+                        <td>@(item.CardLanguage == RiftboundStore.Models.CardLanguage.Chinese ? "Chinês" : "Inglês")</td>
+                        <td>@(item.CardIsFoil ? "Sim" : "Não")</td>
+                        <td>@item.Quantity</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header fw-semibold">Pagamento (opcional — doação)</div>
+            <div class="card-body">
+                @if (Model.DonationAmount > 0)
+                {
+                    <p class="mb-1"><strong>Valor da doação:</strong> R$ @Model.DonationAmount.ToString("F2")</p>
+                }
+                else
+                {
+                    <p class="mb-1">Sem doação neste pedido — obrigado por vir!</p>
+                }
+                <p class="mb-1"><strong>Chave PIX (@ViewBag.PixKeyType):</strong> <code>@ViewBag.PixKey</code></p>
+                <p class="small text-muted mb-0">O pagamento é feito diretamente via PIX, fora do site.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header fw-semibold">Entrega</div>
+            <div class="card-body">
+                @if (Model.DeliveryMethod == RiftboundStore.Models.DeliveryMethod.EventPickup)
+                {
+                    var evento = Model.PickupEvent switch
+                    {
+                        RiftboundStore.Models.PickupEvent.MondayCardsHall => "Segunda-feira 19h (CardsHall)",
+                        RiftboundStore.Models.PickupEvent.ThursdayTabletop => "Quinta-feira 19h30 (Tabletop)",
+                        RiftboundStore.Models.PickupEvent.SaturdayTabletop => "Sábado 14h30 (Tabletop)",
+                        _ => "—"
+                    };
+                    <p class="mb-1"><strong>Retirada em evento:</strong> @evento</p>
+                }
+                else
+                {
+                    <p class="mb-1"><strong>Entrega:</strong> Uber Flash (à combinar)</p>
+                    <p class="mb-0">Entrar em contato conosco, via
+                        <a href="@ViewBag.WhatsAppUrl" target="_blank" rel="noopener">whatsapp</a>, para combinar a entrega.
+                    </p>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.Notes))
+                {
+                    <hr />
+                    <p class="mb-0"><strong>Observações:</strong> @Model.Notes</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary mt-4">Voltar à loja</a>

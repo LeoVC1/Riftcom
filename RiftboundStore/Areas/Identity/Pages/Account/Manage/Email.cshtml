@@ -1,0 +1,33 @@
+@page
+@model EmailModel
+@{
+    ViewData["Title"] = "E-mail";
+}
+
+<h2 class="h5 mb-3">E-mail</h2>
+
+@if (!string.IsNullOrEmpty(Model.StatusMessage))
+{
+    <div class="alert alert-info">@Model.StatusMessage</div>
+}
+
+<form method="post" class="col-md-8">
+    <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+
+    <div class="mb-3">
+        <label class="form-label">E-mail atual</label>
+        <input class="form-control" value="@Model.Email" disabled />
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Input.NewEmail" class="form-label">Novo e-mail</label>
+        <input asp-for="Input.NewEmail" class="form-control" />
+        <span asp-validation-for="Input.NewEmail" class="text-danger small"></span>
+    </div>
+
+    <button type="submit" asp-page-handler="ChangeEmail" class="btn btn-primary">Salvar e-mail</button>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

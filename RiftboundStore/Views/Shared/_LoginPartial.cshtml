@@ -1,0 +1,59 @@
+@using Microsoft.AspNetCore.Identity
+@using RiftboundStore.Models
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+
+@if (SignInManager.IsSignedIn(User))
+{
+    var user = await UserManager.GetUserAsync(User);
+    var display = user?.DisplayName ?? user?.Email ?? "Conta";
+    var isAdmin = user is not null && await UserManager.IsInRoleAsync(user, "Admin");
+
+    <div class="dropdown">
+        <button class="header-action dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            <svg class="icon"><use href="#icon-user"/></svg>
+            <span class="d-none d-md-inline">@display</span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" asp-area="Identity" asp-page="/Account/Manage/Index">
+                    <svg class="icon icon-sm"><use href="#icon-user"/></svg>
+                    Minha conta
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" asp-area="" asp-controller="Orders" asp-action="Index">
+                    <svg class="icon icon-sm"><use href="#icon-package"/></svg>
+                    Meus pedidos
+                </a>
+            </li>
+            @if (isAdmin)
+            {
+                <li><hr class="dropdown-divider" /></li>
+                <li>
+                    <a class="dropdown-item d-flex align-items-center gap-2" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">
+                        <svg class="icon icon-sm"><use href="#icon-dashboard"/></svg>
+                        Painel Admin
+                    </a>
+                </li>
+            }
+            <li><hr class="dropdown-divider" /></li>
+            <li>
+                <form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })" method="post">
+                    <button type="submit" class="dropdown-item d-flex align-items-center gap-2">
+                        <svg class="icon icon-sm"><use href="#icon-logout"/></svg>
+                        Sair
+                    </button>
+                </form>
+            </li>
+        </ul>
+    </div>
+}
+else
+{
+    <a class="header-action" asp-area="Identity" asp-page="/Account/Login">
+        <svg class="icon"><use href="#icon-user"/></svg>
+        Entrar
+    </a>
+    <a class="btn btn-primary d-none d-md-inline-flex ms-1" asp-area="Identity" asp-page="/Account/Register">Cadastrar</a>
+}

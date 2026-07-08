@@ -1,0 +1,89 @@
+@model RiftboundStore.Models.Order
+@using RiftboundStore.Models
+@{
+    ViewData["Title"] = $"Pedido #{Model.Id}";
+}
+
+<h1 class="h4 mb-3">Pedido #@Model.Id</h1>
+
+<div class="row g-3">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">Itens</div>
+            <div class="card-body p-0">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Carta</th>
+                            <th>Edição</th>
+                            <th>Idioma</th>
+                            <th>Foil</th>
+                            <th>Qtd</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var i in Model.Items)
+                        {
+                            <tr>
+                                <td>@i.CardName <span class="text-muted small">#@i.CardNumber</span></td>
+                                <td>@i.CardEdition</td>
+                                <td>@(i.CardLanguage == RiftboundStore.Models.CardLanguage.Chinese ? "Chinês" : "Inglês")</td>
+                                <td>@(i.CardIsFoil ? "Sim" : "Não")</td>
+                                <td>@i.Quantity</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <p class="mb-1"><strong>Cliente:</strong> @Model.User?.Email</p>
+                <p class="mb-1"><strong>Criado em:</strong> @Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+                <p class="mb-1"><strong>Doação:</strong> R$ @Model.DonationAmount.ToString("F2")</p>
+                <p class="mb-1"><strong>Entrega:</strong>
+                    @if (Model.DeliveryMethod == RiftboundStore.Models.DeliveryMethod.EventPickup)
+                    {
+                        var ev = Model.PickupEvent switch
+                        {
+                            RiftboundStore.Models.PickupEvent.MondayCardsHall => "Segunda 19h (CardsHall)",
+                            RiftboundStore.Models.PickupEvent.ThursdayTabletop => "Quinta 19h30 (Tabletop)",
+                            RiftboundStore.Models.PickupEvent.SaturdayTabletop => "Sábado 14h30 (Tabletop)",
+                            _ => "—"
+                        };
+                        @:@ev
+                    }
+                    else
+                    {
+                        @: Uber Flash (à combinar)
+                    }
+                </p>
+                @if (!string.IsNullOrWhiteSpace(Model.Notes))
+                {
+                    <p class="mb-1"><strong>Obs:</strong> @Model.Notes</p>
+                }
+                <p class="mb-0"><strong>Status:</strong>
+                    <span class="badge @DisplayNames.StatusBadgeClass(Model.Status)">@DisplayNames.ForStatus(Model.Status)</span>
+                </p>
+            </div>
+        </div>
+
+        <form asp-action="UpdateStatus" asp-route-id="@Model.Id" method="post" class="card shadow-sm">
+            <div class="card-body">
+                <label class="form-label fw-semibold">Alterar status</label>
+                <select name="status" class="form-select mb-2">
+                    @foreach (var s in Enum.GetValues<OrderStatus>())
+                    {
+                        <option value="@s" selected="@(s == Model.Status)">@DisplayNames.ForStatus(s)</option>
+                    }
+                </select>
+                <button type="submit" class="btn btn-primary w-100">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<a asp-action="Index" class="btn btn-link mt-3 ps-0">← Voltar</a>

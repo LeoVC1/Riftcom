@@ -1,0 +1,519 @@
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@{
+    ViewData["Title"] = "Scanner de cartas";
+    var antiforgeryTokens = Antiforgery.GetAndStoreTokens(Context);
+}
+
+<style>
+    #video-wrap { position: relative; background: #000; border-radius: .5rem; overflow: hidden; }
+    #video { width: 100%; display: block; }
+    /* Portrait 5:7 guide matching a Riftbound card, with a thin band at the top marking the name area */
+    #card-guide {
+        position: absolute; left: 36%; right: 36%; top: 5%; bottom: 5%;
+        border: 3px solid rgba(255,255,255,.55); border-radius: .5rem;
+        box-shadow: 0 0 0 9999px rgba(0,0,0,.25);
+        pointer-events: none;
+    }
+    #card-guide.locked { border-color: #22c55e; }
+    #name-band {
+        position: absolute; left: 0; right: 0; top: 0; height: 20%;
+        border-bottom: 2px dashed rgba(255,255,0,.7);
+        background: rgba(255,255,0,.08);
+    }
+    #status-bar {
+        position: absolute; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,.7); color: #fff;
+        padding: .5rem 1rem; font-family: monospace; text-align: center;
+    }
+    #capture-canvas { display: none; }
+    .staged-thumb { width: 40px; height: 56px; object-fit: contain; background: #f6f6f6; }
+    .cand-item { width: 96px; cursor: pointer; }
+    .cand-item:hover { background: #eef; }
+    /* Search-mode dropdown */
+    .search-list { max-height: 60vh; overflow-y: auto; }
+    .search-row { cursor: pointer; padding: .5rem; border-bottom: 1px solid #eee; display: flex; gap: .75rem; align-items: center; }
+    .search-row.active, .search-row:hover { background: #eef2ff; }
+    .search-row img { width: 36px; height: 50px; object-fit: contain; background: #f6f6f6; flex-shrink: 0; }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0">Scanner de cartas</h1>
+    <a asp-controller="Cards" asp-action="Index" class="btn btn-link btn-sm">Ver cartas</a>
+</div>
+
+<div class="btn-group mb-3" role="group" aria-label="Modo">
+    <input type="radio" class="btn-check" name="mode" id="mode-name" value="name" checked>
+    <label class="btn btn-outline-primary" for="mode-name">🔤 Nome (webcam OCR)</label>
+
+    <input type="radio" class="btn-check" name="mode" id="mode-search" value="search">
+    <label class="btn btn-outline-primary" for="mode-search">🔍 Buscar (teclado)</label>
+</div>
+
+<div id="catalog-status" class="text-muted small mb-2">Carregando catálogo...</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <!-- ===== MODE: Nome (OCR) ===== -->
+        <div id="pane-name">
+            <div id="video-wrap" class="shadow-sm">
+                <video id="video" autoplay playsinline muted></video>
+                <div id="card-guide">
+                    <div id="name-band"></div>
+                </div>
+                <div id="status-bar">Iniciando...</div>
+            </div>
+            <canvas id="capture-canvas"></canvas>
+
+            <div class="mt-3 small text-muted">
+                <div><strong>OCR leu:</strong> <code id="ocr-read">—</code></div>
+                <div><strong>Frames processados:</strong> <span id="frame-count">0</span></div>
+                <div>Alinhe o <strong>nome da carta</strong> dentro da faixa amarela no topo do retângulo.</div>
+            </div>
+
+            <div id="candidates-panel" class="mt-3" style="display:none">
+                <div class="small text-muted mb-1"><strong>Top 5 candidatos</strong> — clique para adicionar.</div>
+                <div id="candidates-list" class="d-flex gap-2 flex-wrap"></div>
+            </div>
+        </div>
+
+        <!-- ===== MODE: Busca (teclado) ===== -->
+        <div id="pane-search" style="display:none">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <label for="search-input" class="form-label fw-semibold">Buscar carta pelo nome</label>
+                    <input id="search-input" class="form-control form-control-lg" autocomplete="off" placeholder="Digite parte do nome... (Ex: abandon, ahri)" />
+                    <div class="small text-muted mt-2">
+                        <kbd>↑</kbd> <kbd>↓</kbd> navega · <kbd>Enter</kbd> adiciona · <kbd>Esc</kbd> limpa
+                    </div>
+                </div>
+                <div id="search-results" class="search-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">Lista escaneada</span>
+                <span class="badge text-bg-primary" id="stage-total">0</span>
+            </div>
+            <div class="card-body p-0" style="max-height:60vh; overflow-y:auto">
+                <table class="table mb-0 align-middle">
+                    <tbody id="staged-body">
+                        <tr id="empty-row">
+                            <td class="text-center text-muted py-3">Nenhuma carta ainda.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer d-flex gap-2 justify-content-between">
+                <button id="clear-btn" class="btn btn-outline-danger btn-sm" disabled>Limpar</button>
+                <button id="apply-btn" class="btn btn-primary" disabled>Aplicar ao estoque</button>
+            </div>
+        </div>
+
+        <div id="apply-result" class="mt-3"></div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/tesseract.js@6.0.0/dist/tesseract.min.js"></script>
+    <script>
+        const ANTIFORGERY_TOKEN = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(antiforgeryTokens.RequestToken));
+
+        (function () {
+            // ---------- DOM refs ----------
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('capture-canvas');
+            const statusBar = document.getElementById('status-bar');
+            const ocrRead = document.getElementById('ocr-read');
+            const frameCount = document.getElementById('frame-count');
+            const stagedBody = document.getElementById('staged-body');
+            const stageTotal = document.getElementById('stage-total');
+            const clearBtn = document.getElementById('clear-btn');
+            const applyBtn = document.getElementById('apply-btn');
+            const applyResult = document.getElementById('apply-result');
+            const cardGuide = document.getElementById('card-guide');
+            const catalogStatus = document.getElementById('catalog-status');
+            const paneName = document.getElementById('pane-name');
+            const paneSearch = document.getElementById('pane-search');
+            const searchInput = document.getElementById('search-input');
+            const searchResults = document.getElementById('search-results');
+
+            // ---------- state ----------
+            const staged = new Map();
+            const lastAdded = new Map();
+            const COOLDOWN_MS = 1500;
+            let catalog = []; // full card list with normalized name
+            let ocrWorker = null;
+            let currentMode = 'name';
+            let scanning = false;
+            let frames = 0;
+            let searchHighlight = 0;
+
+            // ---------- helpers ----------
+            function setStatus(msg) { statusBar.textContent = msg; }
+            function escapeHtml(s) {
+                return String(s).replace(/[&<>"']/g, c => ({
+                    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+                }[c]));
+            }
+            function normalize(s) {
+                return String(s || '')
+                    .toLowerCase()
+                    .normalize('NFD').replace(/[̀-ͯ]/g, '') // strip accents
+                    .replace(/[^a-z0-9 ]/g, ' ')                       // strip punctuation
+                    .replace(/\s+/g, ' ').trim();
+            }
+            function levenshtein(a, b) {
+                if (!a.length) return b.length;
+                if (!b.length) return a.length;
+                const m = a.length, n = b.length;
+                const dp = new Array(n + 1);
+                for (let j = 0; j <= n; j++) dp[j] = j;
+                for (let i = 1; i <= m; i++) {
+                    let prev = dp[0];
+                    dp[0] = i;
+                    for (let j = 1; j <= n; j++) {
+                        const tmp = dp[j];
+                        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+                        dp[j] = Math.min(dp[j] + 1, dp[j - 1] + 1, prev + cost);
+                        prev = tmp;
+                    }
+                }
+                return dp[n];
+            }
+            function similarity(a, b) {
+                const maxLen = Math.max(a.length, b.length);
+                if (maxLen === 0) return 1;
+                return 1 - levenshtein(a, b) / maxLen;
+            }
+
+            // ---------- catalog ----------
+            async function loadCatalog() {
+                try {
+                    const res = await fetch('/Admin/Scanner/AllCards');
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const data = await res.json();
+                    catalog = (data.cards || []).map(c => ({ ...c, normalized: normalize(c.name) }));
+                    catalogStatus.textContent = `${catalog.length} cartas no catálogo.`;
+                } catch (err) {
+                    catalogStatus.innerHTML = `<span class="text-danger">Erro ao carregar catálogo: ${escapeHtml(err.message)}</span>`;
+                    throw err;
+                }
+            }
+
+            // ---------- webcam ----------
+            async function startCamera() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+                        audio: false
+                    });
+                    video.srcObject = stream;
+                    await new Promise(res => video.onloadedmetadata = res);
+                    setStatus('Câmera ativa. Inicializando OCR...');
+                } catch (err) {
+                    setStatus('Erro ao acessar câmera: ' + err.message);
+                    throw err;
+                }
+            }
+
+            async function initOcr() {
+                if (ocrWorker) return ocrWorker;
+                ocrWorker = await Tesseract.createWorker('eng');
+                await ocrWorker.setParameters({
+                    // Riftbound card names use A-Z + basic punctuation. Allow apostrophes and commas.
+                    tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ,'-.",
+                    tessedit_pageseg_mode: '7' // single text line
+                });
+                setStatus('OCR pronto. Aponte o nome da carta no topo do retângulo.');
+                return ocrWorker;
+            }
+
+            function captureNameRegion() {
+                // Guide: left 36%, right 36%, top 5%, bottom 5%. Name band = top 20% of guide.
+                const w = video.videoWidth, h = video.videoHeight;
+                const gx = Math.floor(w * 0.36);
+                const gw = Math.floor(w * 0.28);
+                const gy = Math.floor(h * 0.05);
+                const gh = Math.floor(h * 0.90);
+                const nx = gx;
+                const nw = gw;
+                const ny = gy;
+                const nh = Math.floor(gh * 0.20);
+                canvas.width = nw; canvas.height = nh;
+                const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                ctx.drawImage(video, nx, ny, nw, nh, 0, 0, nw, nh);
+                return canvas;
+            }
+
+            // ---------- fuzzy match ----------
+            function findTopByName(ocrText, k = 5) {
+                const q = normalize(ocrText);
+                if (q.length < 2) return [];
+                const scored = new Array(catalog.length);
+                for (let i = 0; i < catalog.length; i++) {
+                    const c = catalog[i];
+                    // Bonus for substring/prefix match.
+                    let score;
+                    if (c.normalized === q) score = 1;
+                    else if (c.normalized.startsWith(q) || q.startsWith(c.normalized)) score = 0.95;
+                    else if (c.normalized.includes(q) || q.includes(c.normalized)) score = 0.9;
+                    else score = similarity(q, c.normalized);
+                    scored[i] = { c, s: score };
+                }
+                scored.sort((a, b) => b.s - a.s);
+                return scored.slice(0, k);
+            }
+
+            // ---------- scan loop (OCR of name) ----------
+            async function scanLoop() {
+                if (scanning) return;
+                scanning = true;
+                const worker = await initOcr();
+                while (true) {
+                    try {
+                        if (currentMode !== 'name') { await new Promise(r => setTimeout(r, 250)); continue; }
+                        const region = captureNameRegion();
+                        const { data: { text } } = await worker.recognize(region);
+                        frames++;
+                        frameCount.textContent = frames;
+                        const raw = text.replace(/\s+/g, ' ').trim();
+                        ocrRead.textContent = raw || '(sem texto)';
+
+                        if (raw.length >= 2) {
+                            const top = findTopByName(raw, 5);
+                            renderCandidates(top);
+                            const best = top[0];
+                            const gap = best && top[1] ? (best.s - top[1].s) : 0;
+                            if (best && best.s >= 0.85 && gap >= 0.10) {
+                                cardGuide.classList.add('locked');
+                                await tryAddCard(best.c, `score ${best.s.toFixed(2)}`);
+                                setTimeout(() => cardGuide.classList.remove('locked'), 500);
+                            } else {
+                                cardGuide.classList.remove('locked');
+                            }
+                        }
+                    } catch (err) {
+                        console.warn('scan error', err);
+                    }
+                    await new Promise(r => setTimeout(r, 300));
+                }
+            }
+
+            let lastCandidatesKey = '';
+            function renderCandidates(top) {
+                const key = top.map(t => `${t.c.id}:${t.s.toFixed(3)}`).join('|');
+                if (key === lastCandidatesKey) return;
+                lastCandidatesKey = key;
+                const panel = document.getElementById('candidates-panel');
+                const list = document.getElementById('candidates-list');
+                panel.style.display = '';
+                list.innerHTML = top.map(({ c, s }) => `
+                    <div class="border rounded p-1 cand-item" data-id="${c.id}" title="score ${s.toFixed(2)}">
+                        ${c.imageUrl ? `<img src="${c.imageUrl}" style="width:100%;height:110px;object-fit:contain;background:#f6f6f6" loading="lazy" />` : ''}
+                        <div class="text-truncate small mt-1" style="font-size:.7rem">${escapeHtml(c.name)}</div>
+                        <div class="small text-muted" style="font-size:.65rem">${(s * 100).toFixed(0)}%</div>
+                    </div>`).join('');
+            }
+            document.getElementById('candidates-list').addEventListener('click', ev => {
+                const el = ev.target.closest('[data-id]'); if (!el) return;
+                const id = Number(el.dataset.id);
+                const card = catalog.find(c => c.id === id);
+                if (card) { addToStaged(card); setStatus(`✓ ${card.name} (manual pick)`); }
+            });
+
+            async function tryAddCard(card, extraLabel) {
+                const now = Date.now();
+                if (lastAdded.has(card.id) && now - lastAdded.get(card.id) < COOLDOWN_MS) return;
+                lastAdded.set(card.id, now);
+                addToStaged(card);
+                setStatus(`✓ ${card.name} (${extraLabel})`);
+            }
+
+            // ---------- staging list ----------
+            function addToStaged(card) {
+                const existing = staged.get(card.id);
+                if (existing) existing.quantity += 1;
+                else staged.set(card.id, { card, quantity: 1 });
+                renderStaged();
+            }
+            function changeQty(id, delta) {
+                const it = staged.get(id); if (!it) return;
+                it.quantity += delta;
+                if (it.quantity <= 0) staged.delete(id);
+                renderStaged();
+            }
+            function removeStaged(id) { staged.delete(id); renderStaged(); }
+            function renderStaged() {
+                const rows = [];
+                let total = 0;
+                for (const { card, quantity } of staged.values()) {
+                    total += quantity;
+                    rows.push(`
+                        <tr data-id="${card.id}">
+                          <td>${card.imageUrl ? `<img class="staged-thumb" src="${card.imageUrl}" alt="" loading="lazy" />` : ''}</td>
+                          <td>
+                            <div class="fw-semibold small">${escapeHtml(card.name)}</div>
+                            <div class="text-muted" style="font-size:.75rem">#${card.number} · ${escapeHtml(card.edition)}${card.isFoil ? ' · Foil' : ''}</div>
+                            <div class="text-muted" style="font-size:.7rem">estoque atual: ${card.currentStock}</div>
+                          </td>
+                          <td class="text-nowrap">
+                            <button class="btn btn-sm btn-outline-secondary" data-action="dec">−</button>
+                            <span class="mx-2 fw-bold">${quantity}</span>
+                            <button class="btn btn-sm btn-outline-secondary" data-action="inc">+</button>
+                          </td>
+                          <td class="text-end"><button class="btn btn-sm btn-outline-danger" data-action="del">×</button></td>
+                        </tr>`);
+                }
+                stagedBody.innerHTML = rows.length ? rows.join('') :
+                    '<tr><td class="text-center text-muted py-3">Nenhuma carta ainda.</td></tr>';
+                stageTotal.textContent = total;
+                clearBtn.disabled = staged.size === 0;
+                applyBtn.disabled = staged.size === 0;
+            }
+            stagedBody.addEventListener('click', ev => {
+                const btn = ev.target.closest('button[data-action]'); if (!btn) return;
+                const id = Number(btn.closest('tr').dataset.id);
+                if (btn.dataset.action === 'inc') changeQty(id, +1);
+                else if (btn.dataset.action === 'dec') changeQty(id, -1);
+                else if (btn.dataset.action === 'del') removeStaged(id);
+            });
+
+            clearBtn.addEventListener('click', () => {
+                if (!confirm('Limpar toda a lista?')) return;
+                staged.clear(); renderStaged(); applyResult.innerHTML = '';
+            });
+
+            applyBtn.addEventListener('click', async () => {
+                applyBtn.disabled = true;
+                applyResult.innerHTML = '';
+                const items = Array.from(staged.values()).map(x => ({ cardId: x.card.id, quantity: x.quantity }));
+                try {
+                    const res = await fetch('/Admin/Scanner/Apply', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': ANTIFORGERY_TOKEN },
+                        body: JSON.stringify(items)
+                    });
+                    const data = await res.json();
+                    if (!res.ok) {
+                        applyResult.innerHTML = `<div class="alert alert-danger">${escapeHtml(data.error || 'Erro')}</div>`;
+                        applyBtn.disabled = false;
+                        return;
+                    }
+                    applyResult.innerHTML = `<div class="alert alert-success">${data.updated} carta(s) atualizada(s) no estoque.</div>`;
+                    staged.clear(); renderStaged();
+                    // Sync the updated stock counts back into local catalog so the search shows fresh numbers.
+                    for (const it of items) {
+                        const c = catalog.find(x => x.id === it.cardId);
+                        if (c) c.currentStock += it.quantity;
+                    }
+                } catch (err) {
+                    applyResult.innerHTML = `<div class="alert alert-danger">Falha: ${escapeHtml(err.message)}</div>`;
+                    applyBtn.disabled = false;
+                }
+            });
+
+            // ---------- search mode ----------
+            function searchCards(q, limit = 20) {
+                const nq = normalize(q);
+                if (nq.length === 0) return [];
+                // First: substring matches. Then: fuzzy on the rest.
+                const includes = [];
+                const rest = [];
+                for (const c of catalog) {
+                    if (c.normalized.includes(nq)) includes.push(c);
+                    else rest.push(c);
+                }
+                if (includes.length >= limit) return includes.slice(0, limit);
+                const fuzzy = rest.map(c => ({ c, s: similarity(nq, c.normalized) }))
+                    .filter(x => x.s >= 0.5)
+                    .sort((a, b) => b.s - a.s)
+                    .slice(0, limit - includes.length)
+                    .map(x => x.c);
+                return includes.concat(fuzzy);
+            }
+
+            function renderSearchResults(results) {
+                if (results.length === 0) {
+                    searchResults.innerHTML = '<div class="text-muted text-center p-3">Nada encontrado.</div>';
+                    return;
+                }
+                searchResults.innerHTML = results.map((c, i) => `
+                    <div class="search-row ${i === searchHighlight ? 'active' : ''}" data-id="${c.id}">
+                        ${c.imageUrl ? `<img src="${c.imageUrl}" loading="lazy" />` : ''}
+                        <div class="flex-fill">
+                            <div class="fw-semibold">${escapeHtml(c.name)}</div>
+                            <div class="small text-muted">#${c.number} · ${escapeHtml(c.edition)}${c.isFoil ? ' · Foil' : ''} · estoque ${c.currentStock}</div>
+                        </div>
+                    </div>`).join('');
+            }
+
+            let searchCache = [];
+            searchInput.addEventListener('input', () => {
+                searchHighlight = 0;
+                searchCache = searchCards(searchInput.value, 20);
+                renderSearchResults(searchCache);
+            });
+            searchInput.addEventListener('keydown', ev => {
+                if (ev.key === 'ArrowDown') {
+                    ev.preventDefault();
+                    if (searchCache.length) { searchHighlight = Math.min(searchHighlight + 1, searchCache.length - 1); renderSearchResults(searchCache); }
+                } else if (ev.key === 'ArrowUp') {
+                    ev.preventDefault();
+                    searchHighlight = Math.max(searchHighlight - 1, 0);
+                    renderSearchResults(searchCache);
+                } else if (ev.key === 'Enter') {
+                    ev.preventDefault();
+                    const pick = searchCache[searchHighlight];
+                    if (pick) {
+                        addToStaged(pick);
+                        searchInput.value = '';
+                        searchCache = [];
+                        renderSearchResults(searchCache);
+                    }
+                } else if (ev.key === 'Escape') {
+                    searchInput.value = '';
+                    searchCache = [];
+                    renderSearchResults(searchCache);
+                }
+            });
+            searchResults.addEventListener('click', ev => {
+                const row = ev.target.closest('.search-row'); if (!row) return;
+                const id = Number(row.dataset.id);
+                const card = catalog.find(c => c.id === id);
+                if (card) {
+                    addToStaged(card);
+                    searchInput.value = '';
+                    searchCache = [];
+                    renderSearchResults(searchCache);
+                    searchInput.focus();
+                }
+            });
+
+            // ---------- mode toggle ----------
+            document.querySelectorAll('input[name="mode"]').forEach(r => {
+                r.addEventListener('change', () => {
+                    currentMode = r.value;
+                    paneName.style.display = currentMode === 'name' ? '' : 'none';
+                    paneSearch.style.display = currentMode === 'search' ? '' : 'none';
+                    if (currentMode === 'search') {
+                        setTimeout(() => searchInput.focus(), 50);
+                    }
+                });
+            });
+
+            // ---------- boot ----------
+            (async () => {
+                await loadCatalog();
+                try {
+                    await startCamera();
+                    scanLoop();
+                } catch (err) {
+                    console.error(err);
+                }
+            })();
+        })();
+    </script>
+}
