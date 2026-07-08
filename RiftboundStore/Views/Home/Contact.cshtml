@@ -1,5 +1,7 @@
 @{
     ViewData["Title"] = "Contato";
+    var pixKey = ViewBag.PixKey as string ?? "";
+    var pixKeyJson = System.Text.Json.JsonSerializer.Serialize(pixKey);
 }
 
 <div class="row justify-content-center">
@@ -47,15 +49,25 @@
         </div>
 
         <div class="card shadow-sm mt-4">
-            <div class="card-body">
-                <h2 class="h5 mb-3">Chave PIX (doação para manutenção)</h2>
-                <p class="text-muted small mb-2">
+            <div class="card-body text-center">
+                <h2 class="h5 mb-2">Chave PIX (doação para manutenção)</h2>
+                <p class="text-muted small mb-3">
                     A Riftcom não cobra pelas cartas. Se quiser ajudar a manter a plataforma no ar,
-                    contribua com o valor que fizer sentido pra você via PIX.
+                    contribua com o valor que fizer sentido pra você.
                 </p>
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <span class="badge text-bg-secondary">@ViewBag.PixKeyType</span>
-                    <code class="user-select-all fs-6">@ViewBag.PixKey</code>
+
+                <div id="pix-qr-wrap" class="d-inline-block p-3 bg-white rounded shadow-sm mb-3" style="border:1px solid var(--gray-200)">
+                    <canvas id="pix-qr-canvas" aria-label="QR Code PIX"></canvas>
+                </div>
+
+                <div class="d-flex justify-content-center align-items-center gap-2 flex-wrap mb-2">
+                    <button type="button" id="copy-pix" class="btn btn-primary">
+                        <svg class="icon me-1"><use href="#icon-package"/></svg>
+                        Copiar Chave PIX
+                    </button>
+                </div>
+                <div class="small text-muted">
+                    Escaneie o QR no app do banco ou clique em "Copiar Chave PIX" para colar no <em>Copia e Cola</em>.
                 </div>
             </div>
         </div>
@@ -68,6 +80,9 @@
                     <li>Quinta-feira, <strong>19h30</strong> — Tabletop</li>
                     <li>Sábado, <strong>14h30</strong> — Tabletop</li>
                 </ul>
+                <p class="small text-muted fst-italic mt-2 mb-3">
+                    A Riftcom não possui qualquer vínculo com essas lojas. Elas são isentas de qualquer responsabilidade ou pedido deste site.
+                </p>
                 <p class="small text-muted mt-3 mb-0">
                     Ou combine entrega via Uber Flash (à combinar) direto no WhatsApp.
                 </p>
@@ -75,3 +90,39 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script>
+        (function () {
+            const PIX_CODE = @Html.Raw(pixKeyJson);
+
+            // Render the QR from the BR Code so it stays in sync with appsettings.
+            QRCode.toCanvas(document.getElementById('pix-qr-canvas'), PIX_CODE, {
+                width: 240,
+                margin: 2,
+                errorCorrectionLevel: 'M',
+                color: { dark: '#18181b', light: '#ffffff' }
+            }).catch(err => console.warn('QR render failed:', err));
+
+            const btn = document.getElementById('copy-pix');
+            const originalHTML = btn.innerHTML;
+            btn.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(PIX_CODE);
+                    btn.innerHTML = '<svg class="icon me-1"><use href="#icon-check"/></svg>Chave copiada!';
+                    btn.classList.remove('btn-primary');
+                    btn.classList.add('btn-success');
+                    setTimeout(() => {
+                        btn.innerHTML = originalHTML;
+                        btn.classList.remove('btn-success');
+                        btn.classList.add('btn-primary');
+                    }, 2200);
+                } catch (err) {
+                    btn.innerHTML = '❌ Erro ao copiar';
+                    setTimeout(() => { btn.innerHTML = originalHTML; }, 2200);
+                }
+            });
+        })();
+    </script>
+}

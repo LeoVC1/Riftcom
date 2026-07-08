@@ -5,7 +5,8 @@ public class CardIndexViewModel
     public string? Query { get; set; }
     public string? Edition { get; set; }
     public CardLanguage? Language { get; set; }
-    public bool? Foil { get; set; }
+    // One of: "common", "uncommon", "rare", "epic", "other" (aggregates anything unmapped).
+    public string? Rarity { get; set; }
     public bool InStockOnly { get; set; }
     public string Sort { get; set; } = "name";
 

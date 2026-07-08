@@ -29,6 +29,12 @@ public class Card
     [Display(Name = "Foil")]
     public bool IsFoil { get; set; }
 
+    // Source rarity ID from playriftbound.com: "common", "uncommon", "rare", "epic", "showcase", ...
+    // Kept as string so future rarities the game adds don't require a schema migration.
+    [StringLength(32)]
+    [Display(Name = "Raridade")]
+    public string? Rarity { get; set; }
+
     [Range(0, 10000)]
     [Display(Name = "Estoque")]
     public int Stock { get; set; }

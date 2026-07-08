@@ -44,7 +44,7 @@ public class HomeController : Controller
         string? q,
         string? edition,
         CardLanguage? language,
-        bool? foil,
+        string? rarity,
         bool inStockOnly = false,
         string sort = "name",
         int page = 1)
@@ -54,7 +54,7 @@ public class HomeController : Controller
             Query = q,
             Edition = edition,
             Language = language,
-            Foil = foil,
+            Rarity = rarity,
             InStockOnly = inStockOnly,
             Sort = sort ?? "name",
             Page = page < 1 ? 1 : page
@@ -79,9 +79,22 @@ public class HomeController : Controller
             query = query.Where(c => c.Language == language.Value);
         }
 
-        if (foil.HasValue)
+        if (!string.IsNullOrWhiteSpace(rarity))
         {
-            query = query.Where(c => c.IsFoil == foil.Value);
+            var r = rarity.ToLowerInvariant();
+            if (r == "other")
+            {
+                // "Outros" = anything not in the 4 main buckets (includes showcase, unknowns, and future rarities).
+                query = query.Where(c => c.Rarity == null
+                                          || (c.Rarity != DisplayNames.RarityCommon
+                                              && c.Rarity != DisplayNames.RarityUncommon
+                                              && c.Rarity != DisplayNames.RarityRare
+                                              && c.Rarity != DisplayNames.RarityEpic));
+            }
+            else
+            {
+                query = query.Where(c => c.Rarity == r);
+            }
         }
 
         if (inStockOnly)

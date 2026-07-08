@@ -34,4 +34,21 @@ public static class DisplayNames
         PickupEvent.SaturdayTabletop => "Sábado 14h30 (Tabletop)",
         _ => "—"
     };
+
+    // Well-known source rarity IDs from playriftbound.com.
+    public const string RarityCommon = "common";
+    public const string RarityUncommon = "uncommon";
+    public const string RarityRare = "rare";
+    public const string RarityEpic = "epic";
+    public static readonly string[] MainRarities = { RarityCommon, RarityUncommon, RarityRare, RarityEpic };
+
+    public static string ForRarity(string? rarity) => (rarity ?? string.Empty).ToLowerInvariant() switch
+    {
+        RarityCommon => "Comum",
+        RarityUncommon => "Incomum",
+        RarityRare => "Raro",
+        RarityEpic => "Épico",
+        "" or null => "—",
+        _ => "Outros"
+    };
 }

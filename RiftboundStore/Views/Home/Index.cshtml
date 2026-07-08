@@ -4,7 +4,7 @@
     var returnUrl = Context.Request.Path + Context.Request.QueryString;
     // Only show the hero on the plain home (no filters/search/pagination active)
     var showHero = string.IsNullOrEmpty(Model.Query) && string.IsNullOrEmpty(Model.Edition)
-                   && !Model.Language.HasValue && !Model.Foil.HasValue
+                   && !Model.Language.HasValue && string.IsNullOrEmpty(Model.Rarity)
                    && !Model.InStockOnly && Model.Page == 1
                    && (Model.Sort ?? "name") == "name";
 }
@@ -98,11 +98,14 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Foil</label>
-                        <select name="foil" class="form-select">
-                            <option value="">Todos</option>
-                            <option value="true" selected="@(Model.Foil == true)">Somente Foil</option>
-                            <option value="false" selected="@(Model.Foil == false)">Sem Foil</option>
+                        <label class="form-label">Raridade</label>
+                        <select name="rarity" class="form-select">
+                            <option value="">Todas</option>
+                            <option value="common"   selected="@(Model.Rarity == "common")">Comum</option>
+                            <option value="uncommon" selected="@(Model.Rarity == "uncommon")">Incomum</option>
+                            <option value="rare"     selected="@(Model.Rarity == "rare")">Raro</option>
+                            <option value="epic"     selected="@(Model.Rarity == "epic")">Épico</option>
+                            <option value="other"    selected="@(Model.Rarity == "other")">Outros</option>
                         </select>
                     </div>
 
@@ -216,7 +219,7 @@
                     ["q"] = Model.Query,
                     ["edition"] = Model.Edition,
                     ["language"] = Model.Language?.ToString(),
-                    ["foil"] = Model.Foil?.ToString().ToLower(),
+                    ["rarity"] = Model.Rarity,
                     ["inStockOnly"] = Model.InStockOnly.ToString().ToLower(),
                     ["sort"] = Model.Sort,
                     ["page"] = p.ToString()

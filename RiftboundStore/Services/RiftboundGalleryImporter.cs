@@ -57,7 +57,9 @@ public class RiftboundGalleryImporter : IRiftboundGalleryImporter
             var name = src.Name?.Trim();
             var number = src.CollectorNumber?.ToString();
             var edition = src.Set?.Value?.Label?.Trim();
-            var rarityId = src.Rarity?.Value?.Id ?? string.Empty;
+            var rarityId = string.IsNullOrWhiteSpace(src.Rarity?.Value?.Id)
+                ? null
+                : src.Rarity!.Value!.Id!.ToLowerInvariant();
             var imageUrl = src.CardImage?.Url;
 
             if (string.IsNullOrWhiteSpace(name) ||
@@ -69,7 +71,7 @@ public class RiftboundGalleryImporter : IRiftboundGalleryImporter
                 continue;
             }
 
-            var isFoil = FoilRarities.Contains(rarityId);
+            var isFoil = rarityId is not null && FoilRarities.Contains(rarityId);
             const CardLanguage language = CardLanguage.English;
 
             var existing = await _db.Cards.FirstOrDefaultAsync(c =>
@@ -87,6 +89,7 @@ public class RiftboundGalleryImporter : IRiftboundGalleryImporter
                     Edition = edition,
                     Language = language,
                     IsFoil = isFoil,
+                    Rarity = rarityId,
                     Stock = 0,
                     ImageUrl = imageUrl,
                     CreatedAt = DateTime.UtcNow,
@@ -99,6 +102,7 @@ public class RiftboundGalleryImporter : IRiftboundGalleryImporter
                 var changed = false;
                 if (existing.Name != name) { existing.Name = name; changed = true; }
                 if (existing.ImageUrl != imageUrl) { existing.ImageUrl = imageUrl; changed = true; }
+                if (existing.Rarity != rarityId) { existing.Rarity = rarityId; changed = true; }
                 // Stock is intentionally preserved.
                 if (changed)
                 {
