@@ -55,10 +55,13 @@ public class RiftboundGalleryImporter : IRiftboundGalleryImporter
             ct.ThrowIfCancellationRequested();
 
             var name = src.Name?.Trim();
-            // Derive from publicCode: regular cards ("UNL-008/219") → "8"; tokens/runes ("UNL-T08") → "T08".
-            // Avoids collisions between numbered set cards and specials that share a collectorNumber.
-            var number = DeriveNumber(src.PublicCode, src.CollectorNumber);
-            var edition = src.Set?.Value?.Label?.Trim();
+            var sourceEdition = src.Set?.Value?.Label?.Trim();
+            // Regular cards ("UNL-008/219"): Number="8", Edition=source set label.
+            // Tokens ("UNL-T08"):            Number="UNL-T08", Edition="Tokens".
+            // Runas  ("VEN-R04"):            Number="VEN-R04", Edition="Runas".
+            // Using the full publicCode as Number for specials avoids collisions when
+            // multiple sets use the same suffix (e.g., UNL-T03 vs SFD-T03).
+            var (number, edition) = DeriveIdentity(src.PublicCode, src.CollectorNumber, sourceEdition);
             var rarityId = string.IsNullOrWhiteSpace(src.Rarity?.Value?.Id)
                 ? null
                 : src.Rarity!.Value!.Id!.ToLowerInvariant();
@@ -124,13 +127,16 @@ public class RiftboundGalleryImporter : IRiftboundGalleryImporter
     }
 
     /// <summary>
-    /// Derives the stored Number from the source publicCode.
-    ///   "UNL-008/219" → "8"   (regular card — strip leading zeros to match existing DB rows)
-    ///   "UNL-T08"     → "T08" (token/rune/etc — keep alphanumeric suffix)
-    /// Falls back to collectorNumber if publicCode is malformed.
+    /// Derives (Number, Edition) from the source publicCode.
+    ///   "UNL-008/219" → ("8",         "Unleashed") — regular card, source edition kept
+    ///   "UNL-T08"     → ("UNL-T08",   "Tokens")    — token, own edition, full code as number
+    ///   "VEN-R04"     → ("VEN-R04",   "Runas")     — rune, own edition, full code as number
+    /// Falls back to collectorNumber and source edition if publicCode is malformed.
     /// </summary>
-    private static string DeriveNumber(string? publicCode, int? collectorNumber)
+    private static (string number, string edition) DeriveIdentity(
+        string? publicCode, int? collectorNumber, string? sourceEdition)
     {
+        var fallbackEdition = sourceEdition ?? string.Empty;
         if (!string.IsNullOrWhiteSpace(publicCode))
         {
             var dash = publicCode.IndexOf('-');
@@ -139,14 +145,28 @@ public class RiftboundGalleryImporter : IRiftboundGalleryImporter
             {
                 if (slash > dash)
                 {
+                    // Regular numbered card: SET-NNN/TOTAL
                     var mid = publicCode.Substring(dash + 1, slash - dash - 1);
-                    if (int.TryParse(mid, out var n)) return n.ToString();
-                    return mid;
+                    var num = int.TryParse(mid, out var n) ? n.ToString() : mid;
+                    return (num, fallbackEdition);
                 }
-                return publicCode.Substring(dash + 1);
+                // Special (no slash): categorize by first char after set-dash.
+                var tail = publicCode.Substring(dash + 1);
+                if (tail.Length > 0)
+                {
+                    var prefix = char.ToUpperInvariant(tail[0]);
+                    var edition = prefix switch
+                    {
+                        'T' => "Tokens",
+                        'R' => "Runas",
+                        _   => fallbackEdition
+                    };
+                    // Use full publicCode as Number so cross-set specials with same suffix (e.g. UNL-T03 vs SFD-T03) don't clash.
+                    return (publicCode, edition);
+                }
             }
         }
-        return collectorNumber?.ToString() ?? "";
+        return (collectorNumber?.ToString() ?? "", fallbackEdition);
     }
 
     private static List<CardDto> ExtractItems(string html)
