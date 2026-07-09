@@ -55,7 +55,9 @@ public class RiftboundGalleryImporter : IRiftboundGalleryImporter
             ct.ThrowIfCancellationRequested();
 
             var name = src.Name?.Trim();
-            var number = src.CollectorNumber?.ToString();
+            // Derive from publicCode: regular cards ("UNL-008/219") → "8"; tokens/runes ("UNL-T08") → "T08".
+            // Avoids collisions between numbered set cards and specials that share a collectorNumber.
+            var number = DeriveNumber(src.PublicCode, src.CollectorNumber);
             var edition = src.Set?.Value?.Label?.Trim();
             var rarityId = string.IsNullOrWhiteSpace(src.Rarity?.Value?.Id)
                 ? null
@@ -119,6 +121,32 @@ public class RiftboundGalleryImporter : IRiftboundGalleryImporter
         await _db.SaveChangesAsync(ct);
 
         return new ImportResult(items.Count, created, updated, skipped, warnings);
+    }
+
+    /// <summary>
+    /// Derives the stored Number from the source publicCode.
+    ///   "UNL-008/219" → "8"   (regular card — strip leading zeros to match existing DB rows)
+    ///   "UNL-T08"     → "T08" (token/rune/etc — keep alphanumeric suffix)
+    /// Falls back to collectorNumber if publicCode is malformed.
+    /// </summary>
+    private static string DeriveNumber(string? publicCode, int? collectorNumber)
+    {
+        if (!string.IsNullOrWhiteSpace(publicCode))
+        {
+            var dash = publicCode.IndexOf('-');
+            var slash = publicCode.IndexOf('/');
+            if (dash >= 0)
+            {
+                if (slash > dash)
+                {
+                    var mid = publicCode.Substring(dash + 1, slash - dash - 1);
+                    if (int.TryParse(mid, out var n)) return n.ToString();
+                    return mid;
+                }
+                return publicCode.Substring(dash + 1);
+            }
+        }
+        return collectorNumber?.ToString() ?? "";
     }
 
     private static List<CardDto> ExtractItems(string html)

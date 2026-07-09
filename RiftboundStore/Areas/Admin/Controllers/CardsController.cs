@@ -27,18 +27,23 @@ public class CardsController : Controller
         string? q,
         string? edition,
         CardLanguage? language,
-        string? rarity,
+        string[]? rarity,
         bool? foil,
         bool inStockOnly = false,
         string sort = "edition",
         int page = 1)
     {
+        var raritySet = (rarity ?? Array.Empty<string>())
+            .Where(r => !string.IsNullOrWhiteSpace(r))
+            .Select(r => r.ToLowerInvariant())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
         var vm = new AdminCardsIndexViewModel
         {
             Query = q,
             Edition = edition,
             Language = language,
-            Rarity = rarity,
+            Rarities = raritySet,
             Foil = foil,
             InStockOnly = inStockOnly,
             Sort = sort ?? "edition",
@@ -67,20 +72,27 @@ public class CardsController : Controller
         if (inStockOnly)
             query = query.Where(c => c.Stock > 0);
 
-        if (!string.IsNullOrWhiteSpace(rarity))
+        if (raritySet.Count > 0)
         {
-            var r = rarity.ToLowerInvariant();
-            if (r == "other")
+            var main = DisplayNames.MainRarities;
+            var specific = raritySet.Where(r => r != "other").ToArray();
+            var includeOther = raritySet.Contains("other");
+
+            if (specific.Length > 0 && includeOther)
             {
-                query = query.Where(c => c.Rarity == null
-                                          || (c.Rarity != DisplayNames.RarityCommon
-                                              && c.Rarity != DisplayNames.RarityUncommon
-                                              && c.Rarity != DisplayNames.RarityRare
-                                              && c.Rarity != DisplayNames.RarityEpic));
+                // Union: matches specific rarities OR anything not in the main 4 (incl. null).
+                query = query.Where(c =>
+                    (c.Rarity != null && specific.Contains(c.Rarity))
+                    || c.Rarity == null
+                    || !main.Contains(c.Rarity!));
             }
-            else
+            else if (specific.Length > 0)
             {
-                query = query.Where(c => c.Rarity == r);
+                query = query.Where(c => c.Rarity != null && specific.Contains(c.Rarity));
+            }
+            else // only "other" selected
+            {
+                query = query.Where(c => c.Rarity == null || !main.Contains(c.Rarity!));
             }
         }
 

@@ -6,6 +6,12 @@ namespace RiftboundStore.Services;
 
 public class CartService : ICartService
 {
+    /// <summary>Business rule: a user can carry at most N units of the same card in their cart.</summary>
+    public const int MaxPerCard = 3;
+
+    /// <summary>The effective ceiling for a card given its stock and the per-card cap.</summary>
+    public static int EffectiveMax(int stock) => Math.Max(0, Math.Min(stock, MaxPerCard));
+
     private readonly ApplicationDbContext _db;
 
     public CartService(ApplicationDbContext db)
@@ -60,10 +66,11 @@ public class CartService : ICartService
         var card = await _db.Cards.FirstOrDefaultAsync(c => c.Id == cardId);
         if (card is null) throw new InvalidOperationException("Carta não encontrada.");
 
+        var effectiveMax = EffectiveMax(card.Stock);
         var existing = await _db.CartItems.FirstOrDefaultAsync(c => c.UserId == userId && c.CardId == cardId);
         if (existing is null)
         {
-            var toAdd = Math.Min(quantity, Math.Max(card.Stock, 0));
+            var toAdd = Math.Min(quantity, effectiveMax);
             if (toAdd <= 0) return;
             _db.CartItems.Add(new CartItem
             {
@@ -74,8 +81,7 @@ public class CartService : ICartService
         }
         else
         {
-            var newQty = existing.Quantity + quantity;
-            existing.Quantity = Math.Min(newQty, Math.Max(card.Stock, 0));
+            existing.Quantity = Math.Min(existing.Quantity + quantity, effectiveMax);
         }
 
         await _db.SaveChangesAsync();
@@ -96,7 +102,7 @@ public class CartService : ICartService
             .FirstOrDefaultAsync(c => c.Id == cartItemId && c.UserId == userId);
         if (item is null) return;
 
-        var maxAllowed = Math.Max(item.Card?.Stock ?? 0, 0);
+        var maxAllowed = EffectiveMax(item.Card?.Stock ?? 0);
         item.Quantity = Math.Min(quantity, maxAllowed);
         if (item.Quantity <= 0)
         {

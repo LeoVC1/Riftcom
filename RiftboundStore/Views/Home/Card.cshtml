@@ -26,13 +26,15 @@
             <li><strong>Estoque:</strong> @Model.Stock</li>
         </ul>
 
+        @{ var effectiveMax = CartService.EffectiveMax(Model.Stock); }
         @if (Model.Stock > 0)
         {
             <form asp-controller="Cart" asp-action="Add" method="post" class="d-flex gap-2 align-items-center">
                 <input type="hidden" name="cardId" value="@Model.Id" />
-                <input type="number" name="quantity" value="1" min="1" max="@Model.Stock" class="form-control" style="width:100px" />
+                <input type="number" name="quantity" value="1" min="1" max="@effectiveMax" class="form-control" style="width:100px" />
                 <button type="submit" class="btn btn-primary">Adicionar ao carrinho</button>
             </form>
+            <p class="small text-muted mt-2">Máximo de @CartService.MaxPerCard unidades da mesma carta por pedido.</p>
         }
         else
         {

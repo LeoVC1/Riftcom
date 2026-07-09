@@ -152,6 +152,7 @@
                 {
                     var qty = Model.CartQuantities.TryGetValue(card.Id, out var q) ? q : 0;
                     var esgotada = card.Stock <= 0;
+                    var effectiveMax = CartService.EffectiveMax(card.Stock);
                     var langCode = card.Language == RiftboundStore.Models.CardLanguage.Chinese ? "ZH" : "EN";
                     <div class="col">
                         <div class="product-card card @(esgotada ? "out-of-stock" : "")">
@@ -191,12 +192,12 @@
                                             </form>
                                             <div class="qty-display">
                                                 <span class="qty">@qty</span>
-                                                <span class="stock">de @card.Stock</span>
+                                                <span class="stock">de @effectiveMax</span>
                                             </div>
                                             <form asp-controller="Cart" asp-action="Increment" method="post">
                                                 <input type="hidden" name="cardId" value="@card.Id" />
                                                 <input type="hidden" name="returnUrl" value="@returnUrl" />
-                                                <button type="submit" title="Adicionar uma unidade" @(qty >= card.Stock ? "disabled" : null)>
+                                                <button type="submit" title="Adicionar uma unidade" @(qty >= effectiveMax ? "disabled" : null)>
                                                     <svg class="icon icon-sm"><use href="#icon-plus"/></svg>
                                                 </button>
                                             </form>

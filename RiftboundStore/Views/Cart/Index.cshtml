@@ -54,9 +54,10 @@ else
                         <td>@(item.Card?.Language == RiftboundStore.Models.CardLanguage.Chinese ? "Chinês" : "Inglês")</td>
                         <td>@(item.Card?.IsFoil == true ? "Sim" : "Não")</td>
                         <td>
+                            @{ var effMax = CartService.EffectiveMax(item.Card?.Stock ?? 0); }
                             <form asp-action="Update" method="post" class="d-flex align-items-center gap-2">
                                 <input type="hidden" name="cartItemId" value="@item.Id" />
-                                <input type="number" name="quantity" value="@item.Quantity" min="1" max="@(item.Card?.Stock ?? 1)" class="form-control form-control-sm" style="width:80px" />
+                                <input type="number" name="quantity" value="@item.Quantity" min="1" max="@effMax" class="form-control form-control-sm" style="width:80px" />
                                 <button class="btn btn-sm btn-outline-secondary" type="submit">Atualizar</button>
                             </form>
                         </td>

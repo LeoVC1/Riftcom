@@ -6,17 +6,20 @@
     var page = Model.Page;
     var totalPages = Model.TotalPages;
 
-    Dictionary<string, string?> RouteFor(int p) => new()
+    // Build the pagination URL manually so we can emit multiple `rarity=` params
+    // (ASP.NET's asp-all-route-data serializes arrays as "System.String[]").
+    string UrlFor(int p)
     {
-        ["q"] = Model.Query,
-        ["edition"] = Model.Edition,
-        ["language"] = Model.Language?.ToString(),
-        ["rarity"] = Model.Rarity,
-        ["foil"] = Model.Foil?.ToString().ToLower(),
-        ["inStockOnly"] = Model.InStockOnly.ToString().ToLower(),
-        ["sort"] = Model.Sort,
-        ["page"] = p.ToString()
-    };
+        var parts = new List<string> { $"page={p}" };
+        if (!string.IsNullOrEmpty(Model.Query)) parts.Add($"q={Uri.EscapeDataString(Model.Query)}");
+        if (!string.IsNullOrEmpty(Model.Edition)) parts.Add($"edition={Uri.EscapeDataString(Model.Edition)}");
+        if (Model.Language.HasValue) parts.Add($"language={Model.Language}");
+        foreach (var r in Model.Rarities.OrderBy(x => x)) parts.Add($"rarity={Uri.EscapeDataString(r)}");
+        if (Model.Foil.HasValue) parts.Add($"foil={Model.Foil.Value.ToString().ToLower()}");
+        if (Model.InStockOnly) parts.Add("inStockOnly=true");
+        if (!string.IsNullOrEmpty(Model.Sort)) parts.Add($"sort={Model.Sort}");
+        return "/Admin/Cards?" + string.Join("&", parts);
+    }
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -31,7 +34,7 @@
                 <label class="form-label small text-muted mb-1">Buscar</label>
                 <input type="text" name="q" value="@q" class="form-control form-control-sm" placeholder="Nome, número ou edição" />
             </div>
-            <div class="col-md-2">
+            <div class="col-md-3">
                 <label class="form-label small text-muted mb-1">Edição</label>
                 <select name="edition" class="form-select form-select-sm">
                     <option value="">Todas</option>
@@ -42,18 +45,7 @@
                     }
                 </select>
             </div>
-            <div class="col-md-2">
-                <label class="form-label small text-muted mb-1">Raridade</label>
-                <select name="rarity" class="form-select form-select-sm">
-                    <option value="">Todas</option>
-                    <option value="common"   selected="@(Model.Rarity == "common")">Comum</option>
-                    <option value="uncommon" selected="@(Model.Rarity == "uncommon")">Incomum</option>
-                    <option value="rare"     selected="@(Model.Rarity == "rare")">Raro</option>
-                    <option value="epic"     selected="@(Model.Rarity == "epic")">Épico</option>
-                    <option value="other"    selected="@(Model.Rarity == "other")">Outros</option>
-                </select>
-            </div>
-            <div class="col-md-2">
+            <div class="col-md-3">
                 <label class="form-label small text-muted mb-1">Idioma</label>
                 <select name="language" class="form-select form-select-sm">
                     <option value="">Todos</option>
@@ -68,6 +60,27 @@
                     <option value="true" selected="@(Model.Foil == true)">Sim</option>
                     <option value="false" selected="@(Model.Foil == false)">Não</option>
                 </select>
+            </div>
+        </div>
+        <div class="row g-2 align-items-end mt-1">
+            <div class="col-12">
+                <label class="form-label small text-muted mb-1">
+                    Raridade
+                    <span class="text-muted" style="font-size:.75rem">— clique para ativar/desativar; combine várias</span>
+                </label>
+                <div class="btn-group flex-wrap" role="group" aria-label="Raridade">
+                    @foreach (var (val, label) in new[] {
+                        ("common", "Comum"), ("uncommon", "Incomum"),
+                        ("rare", "Raro"),   ("epic", "Épico"),
+                        ("other", "Outros")
+                    })
+                    {
+                        var isChecked = Model.Rarities.Contains(val);
+                        <input type="checkbox" class="btn-check" name="rarity" value="@val"
+                               id="rar-@val" autocomplete="off" checked="@isChecked" />
+                        <label class="btn btn-sm btn-outline-primary" for="rar-@val">@label</label>
+                    }
+                </div>
             </div>
         </div>
         <div class="row g-2 align-items-end mt-1">
@@ -192,7 +205,7 @@
     <nav class="mt-3" aria-label="Paginação">
         <ul class="pagination pagination-compact justify-content-center">
             <li class="page-item @(current == 1 ? "disabled" : "")">
-                <a class="page-link" asp-action="Index" asp-all-route-data="@RouteFor(Math.Max(1, current - 1))" aria-label="Anterior">
+                <a class="page-link" href="@UrlFor(Math.Max(1, current - 1))" aria-label="Anterior">
                     <svg class="icon icon-sm" style="transform:scaleX(-1)"><use href="#icon-chevron-right"/></svg>
                     <span class="d-none d-sm-inline ms-1">Anterior</span>
                 </a>
@@ -215,13 +228,13 @@
                 else
                 {
                     <li class="page-item d-none d-sm-flex">
-                        <a class="page-link" asp-action="Index" asp-all-route-data="@RouteFor(p.Value)">@p</a>
+                        <a class="page-link" href="@UrlFor(p.Value)">@p</a>
                     </li>
                 }
             }
 
             <li class="page-item @(current == total ? "disabled" : "")">
-                <a class="page-link" asp-action="Index" asp-all-route-data="@RouteFor(Math.Min(total, current + 1))" aria-label="Próxima">
+                <a class="page-link" href="@UrlFor(Math.Min(total, current + 1))" aria-label="Próxima">
                     <span class="d-none d-sm-inline me-1">Próxima</span>
                     <svg class="icon icon-sm"><use href="#icon-chevron-right"/></svg>
                 </a>

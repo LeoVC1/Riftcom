@@ -79,7 +79,7 @@ public class CheckoutController : Controller
             return View(nameof(Index), BuildViewModel(items, model));
         }
 
-        // Recheck stock and adjust quantities
+        // Recheck stock and enforce per-card cap defensively.
         foreach (var it in items)
         {
             if (it.Card is null || it.Card.Stock <= 0)
@@ -87,10 +87,8 @@ public class CheckoutController : Controller
                 ModelState.AddModelError(string.Empty, $"Carta '{it.Card?.Name}' está sem estoque.");
                 return View(nameof(Index), BuildViewModel(items, model));
             }
-            if (it.Quantity > it.Card.Stock)
-            {
-                it.Quantity = it.Card.Stock;
-            }
+            var cap = CartService.EffectiveMax(it.Card.Stock);
+            if (it.Quantity > cap) it.Quantity = cap;
         }
 
         var donation = Math.Round(model.ComputedDonation(), 2);
