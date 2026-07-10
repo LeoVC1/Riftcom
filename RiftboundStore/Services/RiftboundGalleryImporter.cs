@@ -66,6 +66,13 @@ public class RiftboundGalleryImporter : IRiftboundGalleryImporter
                 ? null
                 : src.Rarity!.Value!.Id!.ToLowerInvariant();
             var imageUrl = src.CardImage?.Url;
+            var domainIds = src.Domain?.Values?
+                .Select(d => d.Id?.ToLowerInvariant())
+                .Where(d => !string.IsNullOrWhiteSpace(d))
+                .Distinct()
+                .ToList() ?? new List<string?>();
+            // Wrap with leading/trailing commas so SQL LIKE '%,{id},%' matches without false hits.
+            var domainsStr = domainIds.Count == 0 ? null : "," + string.Join(",", domainIds) + ",";
 
             if (string.IsNullOrWhiteSpace(name) ||
                 string.IsNullOrWhiteSpace(number) ||
@@ -95,6 +102,7 @@ public class RiftboundGalleryImporter : IRiftboundGalleryImporter
                     Language = language,
                     IsFoil = isFoil,
                     Rarity = rarityId,
+                    Domains = domainsStr,
                     Stock = 0,
                     ImageUrl = imageUrl,
                     CreatedAt = DateTime.UtcNow,
@@ -108,6 +116,7 @@ public class RiftboundGalleryImporter : IRiftboundGalleryImporter
                 if (existing.Name != name) { existing.Name = name; changed = true; }
                 if (existing.ImageUrl != imageUrl) { existing.ImageUrl = imageUrl; changed = true; }
                 if (existing.Rarity != rarityId) { existing.Rarity = rarityId; changed = true; }
+                if (existing.Domains != domainsStr) { existing.Domains = domainsStr; changed = true; }
                 // Stock is intentionally preserved.
                 if (changed)
                 {
@@ -228,10 +237,13 @@ public class RiftboundGalleryImporter : IRiftboundGalleryImporter
         public SetDto? Set { get; set; }
         public RarityDto? Rarity { get; set; }
         public ImageDto? CardImage { get; set; }
+        public DomainDto? Domain { get; set; }
     }
     private class SetDto { public SetValueDto? Value { get; set; } }
     private class SetValueDto { public string? Id { get; set; } public string? Label { get; set; } }
     private class RarityDto { public RarityValueDto? Value { get; set; } }
     private class RarityValueDto { public string? Id { get; set; } public string? Label { get; set; } }
     private class ImageDto { public string? Url { get; set; } }
+    private class DomainDto { public List<DomainValueDto>? Values { get; set; } }
+    private class DomainValueDto { public string? Id { get; set; } }
 }

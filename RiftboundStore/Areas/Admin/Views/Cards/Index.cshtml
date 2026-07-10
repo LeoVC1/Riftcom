@@ -15,6 +15,7 @@
         if (!string.IsNullOrEmpty(Model.Edition)) parts.Add($"edition={Uri.EscapeDataString(Model.Edition)}");
         if (Model.Language.HasValue) parts.Add($"language={Model.Language}");
         foreach (var r in Model.Rarities.OrderBy(x => x)) parts.Add($"rarity={Uri.EscapeDataString(r)}");
+        if (!string.IsNullOrEmpty(Model.Domain)) parts.Add($"domain={Uri.EscapeDataString(Model.Domain)}");
         if (Model.Foil.HasValue) parts.Add($"foil={Model.Foil.Value.ToString().ToLower()}");
         if (Model.InStockOnly) parts.Add("inStockOnly=true");
         if (!string.IsNullOrEmpty(Model.Sort)) parts.Add($"sort={Model.Sort}");
@@ -59,6 +60,16 @@
                     <option value="">Todos</option>
                     <option value="true" selected="@(Model.Foil == true)">Sim</option>
                     <option value="false" selected="@(Model.Foil == false)">Não</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small text-muted mb-1">Domínio</label>
+                <select name="domain" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    @foreach (var (id, label) in DisplayNames.Domains)
+                    {
+                        <option value="@id" selected="@(Model.Domain == id)">@label</option>
+                    }
                 </select>
             </div>
         </div>

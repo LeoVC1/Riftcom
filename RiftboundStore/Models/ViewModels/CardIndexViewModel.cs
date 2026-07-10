@@ -7,6 +7,8 @@ public class CardIndexViewModel
     public CardLanguage? Language { get; set; }
     // One of: "common", "uncommon", "rare", "epic", "other" (aggregates anything unmapped).
     public string? Rarity { get; set; }
+    // One of "body" | "calm" | "chaos" | "colorless" | "fury" | "mind" | "order" | null
+    public string? Domain { get; set; }
     public bool InStockOnly { get; set; }
     public string Sort { get; set; } = "name";
 

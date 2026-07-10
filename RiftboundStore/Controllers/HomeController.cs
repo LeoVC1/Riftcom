@@ -45,6 +45,7 @@ public class HomeController : Controller
         string? edition,
         CardLanguage? language,
         string? rarity,
+        string? domain,
         bool inStockOnly = false,
         string sort = "name",
         int page = 1)
@@ -55,6 +56,7 @@ public class HomeController : Controller
             Edition = edition,
             Language = language,
             Rarity = rarity,
+            Domain = domain,
             InStockOnly = inStockOnly,
             Sort = sort ?? "name",
             Page = page < 1 ? 1 : page
@@ -77,6 +79,13 @@ public class HomeController : Controller
         if (language.HasValue)
         {
             query = query.Where(c => c.Language == language.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(domain))
+        {
+            var d = domain.ToLowerInvariant();
+            var pattern = $"%,{d},%";
+            query = query.Where(c => c.Domains != null && EF.Functions.Like(c.Domains, pattern));
         }
 
         if (!string.IsNullOrWhiteSpace(rarity))

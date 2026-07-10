@@ -8,6 +8,7 @@ public class AdminCardsIndexViewModel
     // Multi-select: any subset of "common" | "uncommon" | "rare" | "epic" | "other".
     // Empty set = no rarity filter (matches all).
     public HashSet<string> Rarities { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public string? Domain { get; set; }   // single-select domain, same as home
     public bool? Foil { get; set; }
     public bool InStockOnly { get; set; }
     public string Sort { get; set; } = "edition";

@@ -28,6 +28,7 @@ public class CardsController : Controller
         string? edition,
         CardLanguage? language,
         string[]? rarity,
+        string? domain,
         bool? foil,
         bool inStockOnly = false,
         string sort = "edition",
@@ -44,6 +45,7 @@ public class CardsController : Controller
             Edition = edition,
             Language = language,
             Rarities = raritySet,
+            Domain = domain,
             Foil = foil,
             InStockOnly = inStockOnly,
             Sort = sort ?? "edition",
@@ -71,6 +73,13 @@ public class CardsController : Controller
 
         if (inStockOnly)
             query = query.Where(c => c.Stock > 0);
+
+        if (!string.IsNullOrWhiteSpace(domain))
+        {
+            var d = domain.ToLowerInvariant();
+            var pattern = $"%,{d},%";
+            query = query.Where(c => c.Domains != null && EF.Functions.Like(c.Domains, pattern));
+        }
 
         if (raritySet.Count > 0)
         {

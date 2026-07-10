@@ -51,4 +51,28 @@ public static class DisplayNames
         "" or null => "—",
         _ => "Outros"
     };
+
+    // Domains from playriftbound.com.
+    public static readonly (string Id, string Label)[] Domains = new[]
+    {
+        ("body",      "Corpo"),
+        ("calm",      "Calma"),
+        ("chaos",     "Caos"),
+        ("colorless", "Incolor"),
+        ("fury",      "Fúria"),
+        ("mind",      "Mente"),
+        ("order",     "Ordem"),
+    };
+
+    public static string ForDomain(string? id) => (id ?? string.Empty).ToLowerInvariant() switch
+    {
+        "body" => "Corpo",
+        "calm" => "Calma",
+        "chaos" => "Caos",
+        "colorless" => "Incolor",
+        "fury" => "Fúria",
+        "mind" => "Mente",
+        "order" => "Ordem",
+        _ => id ?? "—"
+    };
 }

@@ -5,6 +5,7 @@
     // Only show the hero on the plain home (no filters/search/pagination active)
     var showHero = string.IsNullOrEmpty(Model.Query) && string.IsNullOrEmpty(Model.Edition)
                    && !Model.Language.HasValue && string.IsNullOrEmpty(Model.Rarity)
+                   && string.IsNullOrEmpty(Model.Domain)
                    && !Model.InStockOnly && Model.Page == 1
                    && (Model.Sort ?? "name") == "name";
 }
@@ -107,6 +108,17 @@
                             <option value="rare"     selected="@(Model.Rarity == "rare")">Raro</option>
                             <option value="epic"     selected="@(Model.Rarity == "epic")">Épico</option>
                             <option value="other"    selected="@(Model.Rarity == "other")">Outros</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Domínio</label>
+                        <select name="domain" class="form-select">
+                            <option value="">Todos</option>
+                            @foreach (var (id, label) in DisplayNames.Domains)
+                            {
+                                <option value="@id" selected="@(Model.Domain == id)">@label</option>
+                            }
                         </select>
                     </div>
 
@@ -222,6 +234,7 @@
                     ["edition"] = Model.Edition,
                     ["language"] = Model.Language?.ToString(),
                     ["rarity"] = Model.Rarity,
+                    ["domain"] = Model.Domain,
                     ["inStockOnly"] = Model.InStockOnly.ToString().ToLower(),
                     ["sort"] = Model.Sort,
                     ["page"] = p.ToString()

@@ -35,6 +35,12 @@ public class Card
     [Display(Name = "Raridade")]
     public string? Rarity { get; set; }
 
+    // Comma-delimited list of source domain IDs with leading/trailing commas for LIKE matching.
+    // Format: ",chaos,order," or ",colorless,". Null when no domain.
+    [StringLength(128)]
+    [Display(Name = "Domínio")]
+    public string? Domains { get; set; }
+
     [Range(0, 10000)]
     [Display(Name = "Estoque")]
     public int Stock { get; set; }
