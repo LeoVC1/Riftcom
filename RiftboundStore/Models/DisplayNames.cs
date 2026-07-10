@@ -52,27 +52,27 @@ public static class DisplayNames
         _ => "Outros"
     };
 
-    // Domains from playriftbound.com.
+    // Domains from playriftbound.com — labels kept in English (brand terminology).
     public static readonly (string Id, string Label)[] Domains = new[]
     {
-        ("body",      "Corpo"),
-        ("calm",      "Calma"),
-        ("chaos",     "Caos"),
-        ("colorless", "Incolor"),
-        ("fury",      "Fúria"),
-        ("mind",      "Mente"),
-        ("order",     "Ordem"),
+        ("body",      "Body"),
+        ("calm",      "Calm"),
+        ("chaos",     "Chaos"),
+        ("colorless", "Colorless"),
+        ("fury",      "Fury"),
+        ("mind",      "Mind"),
+        ("order",     "Order"),
     };
 
     public static string ForDomain(string? id) => (id ?? string.Empty).ToLowerInvariant() switch
     {
-        "body" => "Corpo",
-        "calm" => "Calma",
-        "chaos" => "Caos",
-        "colorless" => "Incolor",
-        "fury" => "Fúria",
-        "mind" => "Mente",
-        "order" => "Ordem",
+        "body" => "Body",
+        "calm" => "Calm",
+        "chaos" => "Chaos",
+        "colorless" => "Colorless",
+        "fury" => "Fury",
+        "mind" => "Mind",
+        "order" => "Order",
         _ => id ?? "—"
     };
 }
