@@ -2,12 +2,9 @@
 @{
     ViewData["Title"] = "Cartas";
     var returnUrl = Context.Request.Path + Context.Request.QueryString;
-    // Only show the hero on the plain home (no filters/search/pagination active)
-    var showHero = string.IsNullOrEmpty(Model.Query) && string.IsNullOrEmpty(Model.Edition)
-                   && !Model.Language.HasValue && string.IsNullOrEmpty(Model.Rarity)
-                   && string.IsNullOrEmpty(Model.Domain)
-                   && !Model.InStockOnly && Model.Page == 1
-                   && (Model.Sort ?? "name") == "name";
+    // Hero shows only on a bare "/" (no query string at all). Any submitted filter — including
+    // unchecking the default "somente com estoque" — hides it.
+    var showHero = string.IsNullOrEmpty(Context.Request.QueryString.Value);
 }
 
 @if (showHero)
@@ -123,8 +120,12 @@
                     </div>
 
                     <div class="form-check mb-3">
+                        @* Checkbox first, hidden after — mirrors what asp-for does internally.
+                           Checked: form sends "true,false" and the model binder takes the first (true).
+                           Unchecked: form sends only "false" from the hidden. *@
                         <input class="form-check-input" type="checkbox" name="inStockOnly" value="true"
                                id="inStockOnly" @(Model.InStockOnly ? "checked" : "") />
+                        <input type="hidden" name="inStockOnly" value="false" />
                         <label class="form-check-label" for="inStockOnly">Somente com estoque</label>
                     </div>
 

@@ -46,10 +46,14 @@ public class HomeController : Controller
         CardLanguage? language,
         string? rarity,
         string? domain,
-        bool inStockOnly = false,
+        bool? inStockOnly = null,
         string sort = "name",
         int page = 1)
     {
+        // Default to true on a fresh visit — the user only sees cards actually available.
+        // If the user unchecks the box, the form sends inStockOnly=false via the hidden field trick.
+        var effectiveInStockOnly = inStockOnly ?? true;
+
         var vm = new CardIndexViewModel
         {
             Query = q,
@@ -57,7 +61,7 @@ public class HomeController : Controller
             Language = language,
             Rarity = rarity,
             Domain = domain,
-            InStockOnly = inStockOnly,
+            InStockOnly = effectiveInStockOnly,
             Sort = sort ?? "name",
             Page = page < 1 ? 1 : page
         };
@@ -106,7 +110,7 @@ public class HomeController : Controller
             }
         }
 
-        if (inStockOnly)
+        if (effectiveInStockOnly)
         {
             query = query.Where(c => c.Stock > 0);
         }
